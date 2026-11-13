@@ -1,0 +1,14 @@
+{
+  "name": "analisador-xadrez",
+  "version": "1.0.0",
+  "description": "Analisador de partidas de xadrez com Stockfish",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "chess.js": "1.0.0-beta.8",
+    "cors": "^2.8.5",
+    "express": "^4.19.2"
+  }
+}
