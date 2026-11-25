@@ -1,0 +1,269 @@
+import React from 'react';
+import { Pressable, StyleProp, Text, View, ViewStyle } from 'react-native';
+import { Icon, IconName } from './Icon';
+import { colors, fonts } from '../theme';
+
+/**
+ * Peças visuais no estilo quadrinho: contorno preto grosso e sombra "dura" deslocada
+ * (feita com uma camada atrás, para ficar igual no Android e no iPhone).
+ */
+
+export function HardShadow({
+  children,
+  offset = 4,
+  radius = 14,
+  shadow = colors.ink,
+  style,
+}: {
+  children: React.ReactNode;
+  offset?: number;
+  radius?: number;
+  shadow?: string;
+  style?: StyleProp<ViewStyle>;
+}) {
+  return (
+    <View style={[{ paddingRight: offset, paddingBottom: offset }, style]}>
+      <View
+        pointerEvents="none"
+        style={{ position: 'absolute', left: offset, top: offset, right: 0, bottom: 0, borderRadius: radius, backgroundColor: shadow }}
+      />
+      {children}
+    </View>
+  );
+}
+
+/** Quadro de papel com contorno preto (os blocos do início). */
+export function ComicTile({
+  icon,
+  label,
+  onPress,
+  tone = colors.red,
+  style,
+}: {
+  icon: IconName;
+  label: string;
+  onPress: () => void;
+  tone?: string;
+  style?: StyleProp<ViewStyle>;
+}) {
+  return (
+    <HardShadow style={style} shadow={tone}>
+      <Pressable
+        onPress={onPress}
+        accessibilityLabel={label}
+        style={({ pressed }) => [
+          tile.box,
+          pressed && { transform: [{ translateX: 2 }, { translateY: 2 }] },
+        ]}
+      >
+        <View style={[tile.icon, { backgroundColor: tone }]}>
+          <Icon name={icon} size={20} color={tone === colors.red ? colors.paper : colors.ink} />
+        </View>
+        <Text style={tile.label} numberOfLines={2}>
+          {label.toUpperCase()}
+        </Text>
+      </Pressable>
+    </HardShadow>
+  );
+}
+
+/** Linha de menu em quadro de papel (ícone, título e uma linha de apoio). */
+export function ComicRow({
+  icon,
+  title,
+  subtitle,
+  onPress,
+  tone = colors.red,
+}: {
+  icon: IconName;
+  title: string;
+  subtitle?: string;
+  onPress: () => void;
+  tone?: string;
+}) {
+  return (
+    <HardShadow shadow={tone}>
+      <Pressable
+        onPress={onPress}
+        accessibilityLabel={title}
+        style={({ pressed }) => [row.box, pressed && { transform: [{ translateX: 2 }, { translateY: 2 }] }]}
+      >
+        <View style={[tile.icon, { backgroundColor: tone }]}>
+          <Icon name={icon} size={20} color={tone === colors.red ? colors.paper : colors.ink} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={row.title} numberOfLines={1}>
+            {title.toUpperCase()}
+          </Text>
+          {subtitle ? (
+            <Text style={row.sub} numberOfLines={1}>
+              {subtitle}
+            </Text>
+          ) : null}
+        </View>
+        <Icon name="next" size={18} color={colors.ink} />
+      </Pressable>
+    </HardShadow>
+  );
+}
+
+/** Título grande com sombra dura (letreiro de quadrinho feito com texto). */
+export function ComicHeading({ children, color = colors.paper, size = 30 }: { children: string; color?: string; size?: number }) {
+  return (
+    <Text
+      style={{
+        color,
+        fontFamily: fonts.condensedHeavy,
+        fontWeight: '900',
+        fontSize: size,
+        letterSpacing: 1.5,
+        textAlign: 'center',
+        textShadowColor: colors.red,
+        textShadowOffset: { width: 3, height: 3 },
+        textShadowRadius: 0.1,
+      }}
+    >
+      {children.toUpperCase()}
+    </Text>
+  );
+}
+
+/** Botão grande de quadrinho (vermelho com sombra preta, ou papel). */
+export function ComicButton({
+  icon,
+  label,
+  onPress,
+  variant = 'red',
+}: {
+  icon: IconName;
+  label: string;
+  onPress: () => void;
+  variant?: 'red' | 'paper';
+}) {
+  const red = variant === 'red';
+  return (
+    <HardShadow radius={12} shadow={red ? colors.ink : colors.red} style={{ flex: 1 }}>
+      <Pressable
+        onPress={onPress}
+        accessibilityLabel={label}
+        style={({ pressed }) => [
+          btn.box,
+          { backgroundColor: red ? colors.red : colors.paper },
+          pressed && { transform: [{ translateX: 2 }, { translateY: 2 }] },
+        ]}
+      >
+        <Icon name={icon} size={19} color={red ? colors.paper : colors.ink} />
+        <Text style={[btn.text, { color: red ? colors.paper : colors.ink }]}>{label}</Text>
+      </Pressable>
+    </HardShadow>
+  );
+}
+
+/** Título de seção: texto em caixa alta com um traço vermelho. */
+export function SectionTitle({ children }: { children: string }) {
+  return (
+    <View style={sec.row}>
+      <Text style={sec.text}>{children}</Text>
+      <View style={sec.line} />
+    </View>
+  );
+}
+
+const tile = {
+  box: {
+    flexGrow: 1,
+    backgroundColor: colors.paper,
+    borderRadius: 14,
+    borderWidth: 2.5,
+    borderColor: colors.ink,
+    paddingHorizontal: 12,
+    paddingVertical: 14,
+    gap: 12,
+    minHeight: 104,
+  },
+  icon: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: colors.ink,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+  },
+  label: {
+    color: colors.ink,
+    fontFamily: fonts.condensedHeavy,
+    fontWeight: '900' as const,
+    fontSize: 14,
+    lineHeight: 17,
+    letterSpacing: 0.5,
+  },
+};
+
+const row = {
+  box: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 12,
+    backgroundColor: colors.paper,
+    borderRadius: 14,
+    borderWidth: 2.5,
+    borderColor: colors.ink,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+  },
+  title: {
+    color: colors.ink,
+    fontFamily: fonts.condensedHeavy,
+    fontWeight: '900' as const,
+    fontSize: 16,
+    letterSpacing: 0.6,
+  },
+  sub: {
+    color: '#4a4f5a',
+    fontSize: 12,
+    marginTop: 1,
+  },
+};
+
+const btn = {
+  box: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    gap: 8,
+    borderRadius: 12,
+    borderWidth: 2.5,
+    borderColor: colors.ink,
+    paddingVertical: 13,
+  },
+  text: {
+    fontFamily: fonts.condensedHeavy,
+    fontWeight: '900' as const,
+    fontSize: 15,
+    letterSpacing: 1.4,
+  },
+};
+
+const sec = {
+  row: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 10,
+    marginTop: 26,
+    marginBottom: 12,
+  },
+  text: {
+    color: colors.paper,
+    fontFamily: fonts.condensedHeavy,
+    fontWeight: '900' as const,
+    fontSize: 15,
+    letterSpacing: 2.4,
+  },
+  line: {
+    flex: 1,
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: colors.red,
+  },
+};

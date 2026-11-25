@@ -1,0 +1,43 @@
+{
+  "expo": {
+    "name": "Chess Analyzer",
+    "slug": "chess-analyzer-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.kauebbs.chessanalyzer"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#ece6da",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "package": "com.kauebbs.chessanalyzer",
+      "versionCode": 1
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-asset"
+    ],
+    "backgroundColor": "#ece6da",
+    "extra": {
+      "eas": {
+        "projectId": "fb37fd67-c067-463f-b007-5604c957da8d"
+      }
+    },
+    "scheme": "chessanalyzer",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ece6da"
+    }
+  }
+}

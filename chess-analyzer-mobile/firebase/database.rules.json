@@ -1,0 +1,40 @@
+{
+  "rules": {
+    "games": {
+      "$code": {
+        ".read": "auth != null",
+        ".write": "auth != null && (!data.exists() || data.child('white/uid').val() === auth.uid || data.child('black/uid').val() === auth.uid || (data.child('status').val() === 'waiting' && newData.child('status').val() === 'playing'))",
+        ".validate": "!newData.exists() || newData.hasChildren(['status', 'createdAt'])"
+      }
+    },
+    "presence": {
+      "$code": {
+        ".read": "auth != null",
+        "$uid": {
+          ".write": "auth != null && auth.uid === $uid"
+        }
+      }
+    },
+    "tournaments": {
+      "$code": {
+        ".read": "auth != null",
+        ".write": "auth != null && (!data.exists() || data.child('host').val() === auth.uid)",
+        "players": {
+          "$pid": {
+            ".write": "auth != null && (auth.uid === $pid || root.child('tournaments').child($code).child('host').val() === auth.uid)"
+          }
+        },
+        "results": {
+          "$key": {
+            ".write": "auth != null && !data.exists()"
+          }
+        },
+        "links": {
+          "$key": {
+            ".write": "auth != null && !data.exists()"
+          }
+        }
+      }
+    }
+  }
+}
