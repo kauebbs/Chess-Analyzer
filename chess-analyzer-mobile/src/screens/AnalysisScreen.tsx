@@ -14,10 +14,10 @@ import { Celebration, CelebrationEvent } from '../components/Celebration';
 import { EngineStatus, StockfishBridge, StockfishHandle } from '../engine/StockfishBridge';
 import { LIVE_DEPTH, REVIEW_PRESETS, ReviewMode } from '../engine/presets';
 import {
-  accuracyWinPercent,
   classifyGame,
   estimateRating,
   EvalData,
+  capsWinPercent,
   gameAccuracy,
   gamePhases,
   MoveClassification,
@@ -31,8 +31,9 @@ import { openingNameAt } from '../utils/openings';
 import { povDiff } from '../utils/winningChances';
 import { parsePgn } from '../services/gameSources';
 import { buildPgn } from '../services/pgnExport';
+import { CapturedRow } from '../components/Captured';
 import { copyText } from '../services/share';
-import { BOARD_THEMES, colors, fonts } from '../theme';
+import { BOARD_THEMES, colors, fonts, themed } from '../theme';
 import type { MenuAction } from './MainMenu';
 import { LogoMark } from '../components/Logo';
 import { AnimationPrefs, celebrationAllowed } from '../settings/animation';
@@ -76,14 +77,22 @@ interface AnalysisScreenProps {
   visible: boolean;
   intent: { action: MenuAction; nonce: number } | null;
   /** PGN para abrir direto na análise (ex.: partida online que terminou). */
-  loadRequest?: { pgn: string; orientation: 'white' | 'black'; nonce: number } | null;
+  loadRequest?: { pgn: string; orientation: 'white' | 'black'; nonce: number; silent?: boolean } | null;
   prefs: AnalysisPrefs;
   onOpenMenu: () => void;
   onOpenSettings: () => void;
-  onSummaryChange: (summary: { title: string; subtitle: string } | null) => void;
+  onSummaryChange: (summary: AnalysisSummary | null) => void;
 }
 
 const positionsOf = (startFen: string, plies: Ply[]) => [startFen, ...plies.map((p) => p.after)];
+
+/** Resumo da análise aberta (menu "Continuar análise" e reabertura ao trocar o tema). */
+export interface AnalysisSummary {
+  title: string;
+  subtitle: string;
+  pgn: string;
+  orientation: 'white' | 'black';
+}
 
 export function AnalysisScreen({
   visible,
@@ -172,7 +181,7 @@ export function AnalysisScreen({
     () =>
       mainPositions.map((_, i) => {
         const ev = mainEvalAt(i);
-        return ev && ev.depth >= MIN_CLASSIFY_DEPTH ? accuracyWinPercent(ev.cp, ev.mate) : null;
+        return ev && ev.depth >= MIN_CLASSIFY_DEPTH ? capsWinPercent(ev.cp, ev.mate) : null;
       }),
     [mainPositions, mainEvalAt]
   );
@@ -276,7 +285,7 @@ export function AnalysisScreen({
   };
 
   // ---------- Carregar / nova partida ----------
-  const loadPgn = (pgn: string, orientation: 'white' | 'black') => {
+  const loadPgn = (pgn: string, orientation: 'white' | 'black', silent = false) => {
     const parsed = parsePgn(pgn); // lança erro se inválido (mostrado no modal)
     if (parsed.moves.length === 0) throw new Error('Esse PGN não tem lances.');
 
@@ -293,7 +302,7 @@ export function AnalysisScreen({
     setEvals({});
     setReportOpen(false);
     setLastReviewMode(null);
-    autoReportRef.current = true;
+    autoReportRef.current = !silent;
     runReview('medium', positionsOf(parsed.startFen, plies), {});
   };
 
@@ -327,7 +336,7 @@ export function AnalysisScreen({
   useEffect(() => {
     if (!loadRequest) return;
     try {
-      loadPgn(loadRequest.pgn, loadRequest.orientation);
+      loadPgn(loadRequest.pgn, loadRequest.orientation, loadRequest.silent);
     } catch (e: any) {
       showToast(e?.message ?? 'Não foi possível abrir a partida');
     }
@@ -341,8 +350,10 @@ export function AnalysisScreen({
       onSummaryChange({
         title: headers ? `${headers.White || 'Brancas'} x ${headers.Black || 'Pretas'}` : 'Tabuleiro livre',
         subtitle: `${Math.ceil(mainline.length / 2)} lances`,
+        pgn: buildPgn(headers, startFen, mainline, null),
+        orientation: flipped ? 'black' : 'white',
       });
-  }, [mainline, headers, onSummaryChange]);
+  }, [mainline, headers, startFen, flipped, onSummaryChange]);
 
   // ---------- Lances no tabuleiro (partida / variante) ----------
   const stateRef = useRef({ currentFen, line, index, mainline, variation, headers });
@@ -638,7 +649,7 @@ export function AnalysisScreen({
         </View>
 
         <View style={styles.middle}>
-          <PlayerBar {...topPlayer} showAccuracy={showAccuracy} />
+          <PlayerBar {...topPlayer} showAccuracy={showAccuracy} fen={currentFen} pieceSet={prefs.pieceSet} />
 
           <View style={styles.boardBlock}>
             <EvalBar
@@ -673,7 +684,7 @@ export function AnalysisScreen({
             </View>
           </View>
 
-          <PlayerBar {...bottomPlayer} showAccuracy={showAccuracy} />
+          <PlayerBar {...bottomPlayer} showAccuracy={showAccuracy} fen={currentFen} pieceSet={prefs.pieceSet} />
 
           <View style={styles.feedback}>
             {engineError ? (
@@ -841,12 +852,16 @@ function PlayerBar({
   acc,
   color,
   showAccuracy,
+  fen,
+  pieceSet,
 }: {
   name: string;
   elo?: string;
   acc: number | null;
   color: 'w' | 'b';
   showAccuracy: boolean;
+  fen: string;
+  pieceSet: string;
 }) {
   return (
     <View style={styles.playerBar}>
@@ -855,6 +870,9 @@ function PlayerBar({
         {name}
         {elo ? <Text style={styles.playerElo}> ({elo})</Text> : null}
       </Text>
+      <View style={{ flexShrink: 1, flexDirection: 'row', justifyContent: 'flex-end' }}>
+        <CapturedRow fen={fen} color={color} pieceSet={pieceSet} size={14} />
+      </View>
       {showAccuracy && acc !== null && (
         <View style={styles.accChip}>
           <Text style={styles.accText}>{acc.toFixed(1)}%</Text>
@@ -870,7 +888,7 @@ function EngineDot({ status }: { status: EngineStatus }) {
   return <View style={[styles.engineDot, { backgroundColor: color }]} accessibilityLabel={`Motor: ${status}`} />;
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.bg,
@@ -908,7 +926,7 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     gap: 5,
     backgroundColor: colors.mint,
-    borderRadius: 999,
+    borderRadius: 3,
     paddingHorizontal: 10,
     paddingVertical: 5,
   },
@@ -1043,7 +1061,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     alignSelf: 'center',
     backgroundColor: colors.surfaceAlt,
-    borderRadius: 999,
+    borderRadius: 3,
     paddingHorizontal: 16,
     paddingVertical: 9,
     borderWidth: 1,
@@ -1053,4 +1071,4 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 13,
   },
-});
+}));

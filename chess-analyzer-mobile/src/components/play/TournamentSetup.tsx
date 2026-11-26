@@ -3,7 +3,7 @@ import { Pressable, ScrollView, Switch, Text, TextInput, View } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Icon } from '../Icon';
 import { Card, Chips, FieldLabel, Header, Label, PrimaryButton, ui } from './ui';
-import { colors, fonts } from '../../theme';
+import { colors, fonts, themed } from '../../theme';
 import { botName, clampRating, ratingLabel } from '../../bots/botPlayer';
 import type { BestOf, Format } from '../../play/tournament';
 import { BEST_OF_OPTIONS, TC_OPTIONS } from './BotSetup';
@@ -180,7 +180,7 @@ export function TournamentSetup({
   );
 }
 
-const styles = {
+const styles = themed(() => ({
   youRow: {
     flexDirection: 'row' as const,
     alignItems: 'center' as const,
@@ -201,7 +201,7 @@ const styles = {
     alignItems: 'center' as const,
     gap: 8,
     backgroundColor: colors.bg,
-    borderRadius: 12,
+    borderRadius: 4,
     paddingHorizontal: 10,
     paddingVertical: 8,
   },
@@ -225,7 +225,7 @@ const styles = {
   step: {
     width: 30,
     height: 30,
-    borderRadius: 8,
+    borderRadius: 4,
     backgroundColor: colors.surfaceAlt,
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
@@ -239,7 +239,7 @@ const styles = {
     borderWidth: 1,
     borderColor: colors.mint,
     borderStyle: 'dashed' as const,
-    borderRadius: 12,
+    borderRadius: 4,
     paddingVertical: 10,
   },
   addText: {
@@ -250,7 +250,7 @@ const styles = {
   quick: {
     paddingHorizontal: 12,
     justifyContent: 'center' as const,
-    borderRadius: 12,
+    borderRadius: 4,
     backgroundColor: colors.bg,
   },
   quickText: {
@@ -258,4 +258,4 @@ const styles = {
     fontWeight: '700' as const,
     fontSize: 12,
   },
-};
+}));

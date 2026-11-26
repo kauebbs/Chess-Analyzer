@@ -6,7 +6,7 @@ import { EvalBar } from '../EvalBar';
 import { MoveList } from '../MoveList';
 import { Celebration, CelebrationEvent } from '../Celebration';
 import { ActionBtn, Header, IconBtn, PlayerRow, SeriesPips, Toast, ui } from './ui';
-import { BOARD_THEMES, colors, fonts } from '../../theme';
+import { BOARD_THEMES, colors, fonts, themed } from '../../theme';
 import type { AnalysisPrefs } from '../../screens/AnalysisScreen';
 import type { BotEngine } from '../../bots/botEngine';
 import { botAcceptsDraw, botWantsDraw, drawishEndgame, ratingLabel } from '../../bots/botPlayer';
@@ -178,6 +178,12 @@ export function BotGame({
   // ---------- Fim de jogo ----------
   const finish = useCallback(
     (result: GameResult, reason: LocalEndReason, finalMoves: string[]) => {
+      // Congela o relógio de quem estava na vez (abandono, empate combinado, tempo)
+      if (statusRef.current === 'playing' && clockOn && tc) {
+        const toMove = finalMoves.length % 2 === 0 ? 'w' : 'b';
+        const spent = Math.max(0, Date.now() - turnStart.current);
+        setTimes((t) => (t ? { ...t, [toMove]: Math.max(0, t[toMove] - spent) } : t));
+      }
       setStatus('over');
       setEnd({ result, reason });
       setThinking(null);
@@ -225,7 +231,7 @@ export function BotGame({
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [gameIdx, mode, title, white, black, human, prefs.animation]
+    [gameIdx, mode, title, white, black, human, prefs.animation, clockOn, tc]
   );
 
   const movesRef = useRef(moves);
@@ -247,10 +253,12 @@ export function BotGame({
       const mover = current.length % 2 === 0 ? 'w' : 'b';
       const nowTs = Date.now();
       if (clockOn && tc) {
+        // Calcula já: o atualizador do estado roda depois, quando turnStart já foi reiniciado
+        const spent = Math.max(0, nowTs - turnStart.current);
         setTimes((t) => {
           if (!t) return t;
           const next = { ...t };
-          next[mover] -= nowTs - turnStart.current;
+          next[mover] -= spent;
           next[mover] += tc.increment * 1000;
           return next;
         });
@@ -442,6 +450,8 @@ export function BotGame({
         active={status === 'playing' && turn === color && thinking !== s.id}
         thinking={thinking === s.id && status === 'playing'}
         score={series ? fmt(scoreOf(s.id)) : null}
+        fen={fen}
+        pieceSet={prefs.pieceSet}
       />
     );
   };
@@ -608,11 +618,11 @@ export function BotGame({
   );
 }
 
-const styles = {
+const styles = themed(() => ({
   seriesStrip: {
     marginHorizontal: 12,
     backgroundColor: colors.surface,
-    borderRadius: 12,
+    borderRadius: 4,
     paddingHorizontal: 12,
     paddingVertical: 8,
     gap: 6,
@@ -647,7 +657,7 @@ const styles = {
   resultBanner: {
     marginHorizontal: 12,
     marginTop: 4,
-    borderRadius: 10,
+    borderRadius: 4,
     paddingHorizontal: 14,
     paddingVertical: 9,
     backgroundColor: colors.surface,
@@ -668,7 +678,7 @@ const styles = {
   },
   offerBtn: {
     backgroundColor: colors.surfaceAlt,
-    borderRadius: 8,
+    borderRadius: 4,
     paddingHorizontal: 10,
     paddingVertical: 7,
   },
@@ -684,4 +694,4 @@ const styles = {
     marginHorizontal: 12,
     marginTop: 4,
   },
-};
+}));

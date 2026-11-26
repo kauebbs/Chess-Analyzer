@@ -1,7 +1,8 @@
 import React from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View, ViewStyle } from 'react-native';
+import { CapturedRow } from '../Captured';
 import { Icon, IconName } from '../Icon';
-import { colors, fonts } from '../../theme';
+import { colors, fonts, themed } from '../../theme';
 import { clampRating, ratingLabel, RATING_PRESETS } from '../../bots/botPlayer';
 
 /** Peças de interface usadas nas telas de jogo (bot, séries, torneios). */
@@ -91,7 +92,7 @@ export function PrimaryButton({
   disabled?: boolean;
   tone?: 'red' | 'mint';
 }) {
-  const fg = tone === 'mint' ? colors.bg : colors.paper;
+  const fg = tone === 'mint' ? colors.bg : colors.onRed;
   return (
     <Pressable
       onPress={onPress}
@@ -201,7 +202,7 @@ export function RatingPicker({ value, onChange, compact = false }: { value: numb
 
 /** Avatar quadrado: inicial do nome (pessoa) ou ícone de bot. */
 export function Avatar({ name, color, bot, size = 36 }: { name: string; color: 'w' | 'b'; bot?: boolean; size?: number }) {
-  const fg = color === 'w' ? colors.ink : colors.paper;
+  const fg = color === 'w' ? '#141414' : '#ece6da'; // cores reais das peças, iguais nos dois temas
   return (
     <View
       style={[
@@ -228,9 +229,14 @@ export function PlayerRow({
   active,
   thinking,
   score,
+  fen,
+  pieceSet = 'staunty',
 }: {
   name: string;
   sub?: string;
+  /** Posição atual: mostra as peças capturadas e a vantagem material. */
+  fen?: string;
+  pieceSet?: string;
   color: 'w' | 'b';
   bot?: boolean;
   time: number | null;
@@ -245,10 +251,17 @@ export function PlayerRow({
       <View style={{ flex: 1 }}>
         <Text style={ui.playerName} numberOfLines={1}>
           {name}
+          {sub ? <Text style={ui.playerSubInline}>{`  ${sub}`}</Text> : null}
         </Text>
-        <Text style={[ui.playerSub, (active || thinking) && { color: colors.mint }]} numberOfLines={1}>
-          {thinking ? 'pensando…' : sub}
-        </Text>
+        <View style={ui.playerLine2}>
+          {thinking ? (
+            <Text style={[ui.playerSub, { color: colors.mint }]} numberOfLines={1}>
+              pensando…
+            </Text>
+          ) : fen ? (
+            <CapturedRow fen={fen} color={color} pieceSet={pieceSet} />
+          ) : null}
+        </View>
       </View>
       {score ? <Text style={ui.seriesScore}>{score}</Text> : null}
       {time !== null ? (
@@ -321,7 +334,18 @@ export function SeriesPips({ marks }: { marks: ('w' | 'd' | 'l' | null)[] }) {
   );
 }
 
-export const ui = StyleSheet.create({
+export const ui = themed(() => StyleSheet.create({
+  playerSubInline: {
+    color: colors.textMuted,
+    fontSize: 12,
+    fontWeight: '400',
+  },
+  playerLine2: {
+    minHeight: 17,
+    marginTop: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   screen: {
     flex: 1,
     backgroundColor: colors.bg,
@@ -604,7 +628,7 @@ export const ui = StyleSheet.create({
     justifyContent: 'flex-end',
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 8,
+    borderRadius: 4,
     backgroundColor: colors.surface,
   },
   clockActive: {
@@ -643,7 +667,7 @@ export const ui = StyleSheet.create({
     alignItems: 'center',
     gap: 3,
     paddingVertical: 8,
-    borderRadius: 12,
+    borderRadius: 4,
   },
   actionText: {
     fontSize: 12,
@@ -678,4 +702,4 @@ export const ui = StyleSheet.create({
     fontSize: 12,
     textAlign: 'center',
   },
-});
+}));

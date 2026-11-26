@@ -110,48 +110,53 @@ export function calculateAccuracy(winBefore: number, winAfter: number): number {
 }
 
 /**
- * Precisão da partida por cor, como no Lichess: média entre a média ponderada pela
- * volatilidade (desvio-padrão da % de vitória numa janela) e a média harmônica.
- * A harmônica é o que faz uma capivarada derrubar bastante a precisão da partida.
- *
- * `whiteWin[i]` = % de vitória das Brancas na posição i (null se não avaliada).
+ * Calibração da precisão para ficar próxima do Chess.com (CAPS2, cuja fórmula não é pública).
+ * Os parâmetros foram ajustados com 71 partidas reais do Chess.com (ratings de 136 a 3498),
+ * comparando a precisão oficial com a calculada a partir das avaliações do Stockfish:
+ * erro médio de ~4 pontos em partidas fora do ajuste (a fórmula do Lichess errava ~9, sempre para cima).
+ */
+const CAPS = {
+  /** Inclinação da curva de % de vitória (bem mais "achatada" que a do Lichess). */
+  k: 0.001812,
+  /** Mate e posições decididas contam como ±15 peões. */
+  cap: 1500,
+  /** Queda da precisão do lance por ponto percentual de vitória perdido. */
+  decay: 0.17356,
+  /** Média potência dos lances: entre a geométrica e a aritmética, então um erro grave pesa bastante. */
+  power: 0.377532,
+};
+
+/** % de vitória (perspectiva das Brancas) na curva usada para a precisão. */
+export function capsWinPercent(cp: number, mate: number | null | undefined): number {
+  const decided = (mate !== null && mate !== undefined) || Math.abs(cp) >= 10000;
+  const c = decided ? (cp > 0 || (mate ?? 0) > 0 ? CAPS.cap : -CAPS.cap) : Math.max(-CAPS.cap, Math.min(CAPS.cap, cp));
+  return 100 / (1 + Math.exp(-CAPS.k * c));
+}
+
+/** Precisão de um lance a partir da % de vitória de quem jogou, antes e depois. */
+export function capsMoveAccuracy(winBefore: number, winAfter: number): number {
+  const loss = Math.max(0, winBefore - winAfter);
+  return Math.max(0.5, Math.min(100, 100 * Math.exp(-CAPS.decay * loss)));
+}
+
+/**
+ * Precisão da partida por cor (calibrada com o Chess.com).
+ * `whiteWin[i]` = % de vitória das Brancas na posição i, de `capsWinPercent` (null se não avaliada).
  */
 export function gameAccuracy(whiteWin: (number | null)[], startColor: 'w' | 'b'): Record<'w' | 'b', number | null> {
-  const n = whiteWin.length;
-  if (n < 2) return { w: null, b: null };
-
-  const windowSize = Math.min(8, Math.max(2, Math.floor((n - 1) / 10)));
-  const firstWindow = whiteWin.slice(0, windowSize);
-  const windows: (number | null)[][] = [];
-  for (let k = 0; k < Math.min(windowSize, n) - 2; k++) windows.push(firstWindow);
-  for (let i = 0; i + windowSize <= n; i++) windows.push(whiteWin.slice(i, i + windowSize));
-
-  const weights = windows.map((w) => {
-    if (w.some((x) => x === null)) return null;
-    const vals = w as number[];
-    const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
-    const sd = Math.sqrt(vals.reduce((a, b) => a + (b - mean) ** 2, 0) / vals.length);
-    return Math.min(12, Math.max(0.5, sd));
-  });
-
-  const per: Record<'w' | 'b', { acc: number; weight: number }[]> = { w: [], b: [] };
-  for (let i = 0; i < n - 1; i++) {
-    const color: 'w' | 'b' = (i % 2 === 0) === (startColor === 'w') ? 'w' : 'b';
+  const per: Record<'w' | 'b', number[]> = { w: [], b: [] };
+  for (let i = 0; i < whiteWin.length - 1; i++) {
     const prev = whiteWin[i];
     const next = whiteWin[i + 1];
-    const weight = weights[i];
-    if (prev === null || next === null || weight === null || weight === undefined) continue;
-    const acc = color === 'w' ? calculateAccuracy(prev, next) : calculateAccuracy(100 - prev, 100 - next);
-    per[color].push({ acc, weight });
+    if (prev === null || next === null) continue;
+    const color: 'w' | 'b' = (i % 2 === 0) === (startColor === 'w') ? 'w' : 'b';
+    per[color].push(color === 'w' ? capsMoveAccuracy(prev, next) : capsMoveAccuracy(100 - prev, 100 - next));
   }
-
-  const combine = (list: { acc: number; weight: number }[]) => {
+  const combine = (list: number[]) => {
     if (list.length === 0) return null;
-    const weighted = list.reduce((a, x) => a + x.acc * x.weight, 0) / list.reduce((a, x) => a + x.weight, 0);
-    const harmonic = list.length / list.reduce((a, x) => a + 1 / Math.max(1, x.acc), 0);
-    return Math.round(((weighted + harmonic) / 2) * 10) / 10;
+    const mean = list.reduce((a, x) => a + x ** CAPS.power, 0) / list.length;
+    return Math.round(mean ** (1 / CAPS.power) * 10) / 10;
   };
-
   return { w: combine(per.w), b: combine(per.b) };
 }
 
@@ -449,16 +454,16 @@ export function gamePhases(positions: string[], classifications: (MoveClassifica
 /** Rating aproximado a partir da precisão (estimativa simples, não oficial). */
 export function estimateRating(accuracy: number | null): number | null {
   if (accuracy === null) return null;
+  // Recalibrado para a escala nova de precisão (referência: Chess.com, 82,0 → 1650 e 58,1 → 550)
   const points: [number, number][] = [
-    [30, 250],
-    [50, 600],
-    [60, 900],
-    [70, 1200],
-    [80, 1600],
-    [85, 1900],
-    [90, 2200],
-    [95, 2600],
-    [98, 2900],
+    [30, 100],
+    [45, 250],
+    [58, 550],
+    [70, 1100],
+    [82, 1650],
+    [88, 2000],
+    [93, 2400],
+    [97, 2800],
     [100, 3100],
   ];
   if (accuracy <= points[0][0]) return points[0][1];
@@ -473,11 +478,11 @@ export function estimateRating(accuracy: number | null): number | null {
 /** Ícone que resume uma fase da partida a partir da precisão nela. */
 export function phaseKind(accuracy: number | null): MoveKind | null {
   if (accuracy === null) return null;
-  if (accuracy >= 95) return 'great';
-  if (accuracy >= 88) return 'best';
-  if (accuracy >= 80) return 'excellent';
-  if (accuracy >= 70) return 'good';
-  if (accuracy >= 55) return 'inaccuracy';
-  if (accuracy >= 40) return 'mistake';
+  if (accuracy >= 93) return 'great';
+  if (accuracy >= 85) return 'best';
+  if (accuracy >= 76) return 'excellent';
+  if (accuracy >= 65) return 'good';
+  if (accuracy >= 50) return 'inaccuracy';
+  if (accuracy >= 35) return 'mistake';
   return 'blunder';
 }

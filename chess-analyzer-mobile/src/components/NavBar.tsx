@@ -2,7 +2,7 @@ import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon, IconName } from './Icon';
-import { colors, fonts } from '../theme';
+import { colors, fonts, themed } from '../theme';
 
 export type NavTab = 'home' | 'play' | 'analyze' | 'tournament' | 'settings';
 
@@ -47,7 +47,7 @@ export function NavBar({ active, onSelect }: { active: NavTab | null; onSelect: 
   );
 }
 
-const styles = {
+const styles = themed(() => ({
   bar: {
     backgroundColor: colors.bg,
     borderTopWidth: 1.5,
@@ -77,4 +77,4 @@ const styles = {
     fontSize: 10.5,
     letterSpacing: 1.1,
   },
-};
+}));

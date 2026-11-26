@@ -4,7 +4,13 @@
       "$code": {
         ".read": "auth != null",
         ".write": "auth != null && (!data.exists() || data.child('white/uid').val() === auth.uid || data.child('black/uid').val() === auth.uid || (data.child('status').val() === 'waiting' && newData.child('status').val() === 'playing'))",
-        ".validate": "!newData.exists() || newData.hasChildren(['status', 'createdAt'])"
+        ".validate": "!newData.exists() || newData.hasChildren(['status', 'createdAt'])",
+        "chat": {
+          "$id": {
+            ".write": "auth != null && !data.exists()",
+            ".validate": "newData.hasChildren(['uid', 'text', 'at']) && newData.child('uid').val() === auth.uid && newData.child('text').isString() && newData.child('text').val().length <= 200"
+          }
+        }
       }
     },
     "presence": {

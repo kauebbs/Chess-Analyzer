@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { Sheet } from '../Sheet';
 import { Icon } from '../Icon';
-import { colors } from '../../theme';
+import { colors, themed } from '../../theme';
 
 export interface ChatLine {
   id: string;
@@ -11,6 +11,8 @@ export interface ChatLine {
   text: string;
   /** Mensagem do sistema (ex.: "Partida começou") */
   system?: boolean;
+  /** Escrita por quem está assistindo. */
+  spectator?: boolean;
 }
 
 export const QUICK_PHRASES = ['Boa sorte!', 'Bom jogo!', 'Boa jogada!', 'Ops 😅', 'Obrigado!', 'Revanche?'];
@@ -53,7 +55,12 @@ export function ChatSheet({
             </Text>
           ) : (
             <View key={l.id} style={[styles.bubble, l.mine ? styles.mine : styles.theirs]}>
-              {!l.mine && <Text style={styles.name}>{l.name}</Text>}
+              {!l.mine && (
+                <Text style={styles.name}>
+                  {l.name}
+                  {l.spectator ? <Text style={styles.watchTag}> · ASSISTINDO</Text> : null}
+                </Text>
+              )}
               <Text style={[styles.text, l.mine && { color: colors.bg }]}>{l.text}</Text>
             </View>
           )
@@ -108,7 +115,13 @@ export function UnreadDot({ count }: { count: number }) {
   );
 }
 
-const styles = {
+const styles = themed(() => ({
+  watchTag: {
+    color: colors.textMuted,
+    fontSize: 9,
+    letterSpacing: 1.2,
+    fontWeight: '700' as const,
+  },
   list: {
     height: 260,
     flexGrow: 0,
@@ -127,7 +140,7 @@ const styles = {
   },
   bubble: {
     maxWidth: '82%' as const,
-    borderRadius: 14,
+    borderRadius: 6,
     paddingHorizontal: 12,
     paddingVertical: 8,
   },
@@ -153,7 +166,7 @@ const styles = {
   },
   quick: {
     backgroundColor: colors.bg,
-    borderRadius: 999,
+    borderRadius: 3,
     paddingHorizontal: 12,
     paddingVertical: 7,
   },
@@ -171,14 +184,14 @@ const styles = {
     minWidth: 0,
     color: colors.text,
     backgroundColor: colors.bg,
-    borderRadius: 12,
+    borderRadius: 4,
     paddingHorizontal: 14,
     paddingVertical: 11,
     fontSize: 15,
   },
   sendBtn: {
     width: 48,
-    borderRadius: 12,
+    borderRadius: 4,
     backgroundColor: colors.red,
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
@@ -200,4 +213,4 @@ const styles = {
     fontSize: 10,
     fontWeight: '900' as const,
   },
-};
+}));

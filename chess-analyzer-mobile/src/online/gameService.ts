@@ -37,7 +37,7 @@ export interface OnlineGame {
   /** Série melhor de 3/5 contra um amigo: placar ANTES deste jogo, por uid. */
   series: OnlineSeries | null;
   /** Jogo de torneio online (o resultado volta para o torneio). */
-  tournament: { code: string; key: string } | null;
+  tournament: { code: string; key: string; /** nome do adversário (mostrado na espera) */ vs?: string } | null;
   /** Bate-papo da sala (mais antigas primeiro). */
   chat: ChatMessage[];
 }
@@ -48,6 +48,8 @@ export interface ChatMessage {
   name: string;
   text: string;
   at: number;
+  /** Mensagem de quem está assistindo (não joga a partida). */
+  spectator?: boolean;
 }
 
 export interface OnlineSeries {
@@ -109,7 +111,14 @@ function fromSnapshot(code: string, v: any): OnlineGame | null {
     series: v.series ? { bestOf: v.series.bestOf, game: v.series.game ?? 1, score: v.series.score ?? {} } : null,
     tournament: v.tournament ?? null,
     chat: Object.entries(v.chat ?? {})
-      .map(([id, m]: [string, any]) => ({ id, uid: m.uid, name: m.name ?? '', text: String(m.text ?? ''), at: m.at ?? 0 }))
+      .map(([id, m]: [string, any]) => ({
+        id,
+        uid: m.uid,
+        name: m.name ?? '',
+        text: String(m.text ?? ''),
+        at: m.at ?? 0,
+        spectator: m.spectator === true,
+      }))
       .sort((a, b) => a.at - b.at || a.id.localeCompare(b.id))
       .slice(-100),
   };
@@ -117,14 +126,20 @@ function fromSnapshot(code: string, v: any): OnlineGame | null {
 
 export const CHAT_MAX = 200;
 
-/** Envia uma mensagem no bate-papo da sala (só quem está jogando pode escrever). */
-export async function sendChat(code: string, name: string, text: string) {
+/** Envia uma mensagem no bate-papo da sala (jogadores e quem está assistindo). */
+export async function sendChat(code: string, name: string, text: string, spectator = false) {
   const clean = text.replace(/\s+/g, ' ').trim().slice(0, CHAT_MAX);
   if (!clean) return;
   const uid = await ensureSignedIn();
   const at = serverNow();
   const id = `${at.toString(36)}${Math.random().toString(36).slice(2, 6)}`;
-  await set(ref(database(), `games/${code}/chat/${id}`), { uid, name: name || 'Jogador', text: clean, at });
+  await set(ref(database(), `games/${code}/chat/${id}`), {
+    uid,
+    name: name || (spectator ? 'Espectador' : 'Jogador'),
+    text: clean,
+    at,
+    ...(spectator ? { spectator: true } : {}),
+  });
 }
 
 /** Placar da série contando o jogo atual (se já terminou) e se ela já foi decidida. */
@@ -189,7 +204,7 @@ export async function createGame(
   name: string,
   color: Color | 'random',
   timeControl: TimeControl | null,
-  extra?: { series?: OnlineSeries; tournament?: { code: string; key: string } }
+  extra?: { series?: OnlineSeries; tournament?: { code: string; key: string; vs?: string } }
 ): Promise<string> {
   const uid = await ensureSignedIn();
   const seat: Color = color === 'random' ? (Math.random() < 0.5 ? 'w' : 'b') : color;
@@ -247,6 +262,15 @@ export async function joinGame(code: string, name: string): Promise<Color> {
     throw new Error('Alguém entrou na sala antes de você.');
   }
   return seat;
+}
+
+/** Confere se a sala existe para assistir (sem ocupar lugar). */
+export async function watchGame(code: string): Promise<OnlineGame> {
+  await ensureSignedIn();
+  const snap = await get(gameRef(code));
+  const game = fromSnapshot(code, snap.val());
+  if (!game) throw new Error(`Sala ${code} não encontrada.`);
+  return game;
 }
 
 export function subscribeGame(code: string, onChange: (game: OnlineGame | null) => void): () => void {

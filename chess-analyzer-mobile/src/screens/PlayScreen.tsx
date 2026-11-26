@@ -20,7 +20,7 @@ import {
   Toast,
   ui,
 } from '../components/play/ui';
-import { colors, fonts } from '../theme';
+import { colors, fonts, themed } from '../theme';
 import type { AnalysisPrefs } from './AnalysisScreen';
 import { createBotEngine, simulateGame } from '../bots/botEngine';
 import { botName, ratingLabel } from '../bots/botPlayer';
@@ -69,10 +69,11 @@ interface PlayScreenProps {
   onOpenMenu: () => void;
   onOpenFriend: () => void;
   /** Abre uma sala online (mesa de torneio). */
-  onOpenOnlineGame: (code: string) => void;
+  /** Abre uma mesa online (`watch` = só assistir). */
+  onOpenOnlineGame: (code: string, watch?: boolean) => void;
   onAnalyze: (pgn: string, orientation: 'white' | 'black') => void;
   /** Barra de navegação: some durante as partidas; aba ativa conforme a área. */
-  onNavChange?: (state: { visible: boolean; tab: 'play' | 'tournament' }) => void;
+  onNavChange?: (state: { visible: boolean; tab: 'play' | 'tournament'; root: boolean }) => void;
 }
 
 interface GameLaunch {
@@ -117,7 +118,11 @@ export function PlayScreen({
   const [route, setRoute] = useState<Route>({ name: 'hub' });
   useEffect(() => {
     const tournamentArea = ['thub', 'tsetup', 'tlocal', 'tonline'].includes(route.name);
-    onNavChange?.({ visible: route.name !== 'game', tab: tournamentArea ? 'tournament' : 'play' });
+    onNavChange?.({
+      visible: route.name !== 'game',
+      tab: tournamentArea ? 'tournament' : 'play',
+      root: route.name === 'hub' || route.name === 'thub',
+    });
   }, [route.name]); // eslint-disable-line react-hooks/exhaustive-deps
   const [toast, setToast] = useState<string | null>(null);
   const showToast = useCallback((msg: string) => {
@@ -484,7 +489,7 @@ export function PlayScreen({
         highlight: true,
         onPress: async () => {
           try {
-            const code = await openTournamentTable(doc, key, myColor, onlineName);
+            const code = await openTournamentTable(doc, key, myColor, onlineName, other.name);
             onOpenOnlineGame(code);
           } catch (e: any) {
             showToast(e?.message ?? 'Não foi possível abrir a mesa');
@@ -500,7 +505,16 @@ export function PlayScreen({
       const person = a.kind === 'human' ? a : b;
       return { kind: 'text', text: `${person.name} joga contra o bot no aparelho dele` };
     }
-    return { kind: 'text', text: doc.links[key] ? 'Partida em andamento' : 'Aguardando os jogadores' };
+    // Mesa de outras pessoas: quem foi eliminado ou está sem partida pode assistir (e conversar)
+    if (doc.links[key]) {
+      return {
+        kind: 'button',
+        label: 'ASSISTIR AO VIVO',
+        icon: 'eye',
+        onPress: () => onOpenOnlineGame(doc.links[key], true),
+      };
+    }
+    return { kind: 'text', text: 'Aguardando os jogadores' };
   };
 
   // ---------- Pedidos vindos do menu / links ----------
@@ -819,7 +833,6 @@ export function PlayScreen({
                   placeholderTextColor={colors.textMuted}
                   autoCapitalize="characters"
                   autoCorrect={false}
-                  maxLength={6}
                   style={[ui.input, styles.codeInput]}
                 />
                 <Pressable
@@ -888,7 +901,7 @@ function AddBotRow({ onAdd }: { onAdd: (rating: number) => void }) {
     );
   }
   return (
-    <View style={{ gap: 8, backgroundColor: colors.bg, borderRadius: 12, padding: 10 }}>
+    <View style={{ gap: 8, backgroundColor: colors.bg, borderRadius: 4, padding: 10 }}>
       <RatingPicker value={rating} onChange={setRating} compact />
       <Text style={[ui.hint, { marginTop: -4 }]}>{ratingLabel(rating)}</Text>
       <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -911,13 +924,13 @@ function AddBotRow({ onAdd }: { onAdd: (rating: number) => void }) {
   );
 }
 
-const styles = {
+const styles = themed(() => ({
   hubItem: {
     flexDirection: 'row' as const,
     alignItems: 'center' as const,
     gap: 14,
     backgroundColor: colors.surface,
-    borderRadius: 16,
+    borderRadius: 4,
     paddingHorizontal: 14,
     paddingVertical: 14,
   },
@@ -927,7 +940,7 @@ const styles = {
   hubIcon: {
     width: 44,
     height: 44,
-    borderRadius: 12,
+    borderRadius: 4,
     backgroundColor: colors.surfaceAlt,
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
@@ -981,7 +994,7 @@ const styles = {
     borderWidth: 1,
     borderColor: colors.mint,
     borderStyle: 'dashed' as const,
-    borderRadius: 12,
+    borderRadius: 4,
     paddingVertical: 10,
   },
   codeInput: {
@@ -997,7 +1010,7 @@ const styles = {
     width: 54,
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
-    borderRadius: 12,
+    borderRadius: 4,
     backgroundColor: colors.red,
   },
   dangerLink: {
@@ -1005,4 +1018,4 @@ const styles = {
     textDecorationLine: 'underline' as const,
     fontSize: 13,
   },
-};
+}));

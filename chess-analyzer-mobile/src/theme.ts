@@ -2,10 +2,28 @@ import { Platform } from 'react-native';
 
 /**
  * Identidade visual "cartaz": papel creme, tinta preta e vermelho de impressão, tipografia condensada
- * alta (veja BRAND.md). `mint` é a cor de destaque (agora a tinta preta); o nome ficou para não mexer
- * no app todo — onde há fundo `mint` o texto usa `bg` (papel), e vice-versa.
+ * alta (veja BRAND.md). `mint` é a cor de destaque (a tinta); o nome ficou para não mexer no app todo:
+ * onde há fundo `mint` o texto usa `bg`, e vice-versa. `ink`/`paper` são o par "traço forte"/"contraste
+ * do traço" e se invertem no tema escuro; `onRed` é o texto sobre o vermelho nos dois temas.
  */
-export const colors = {
+export type Palette = {
+  bg: string;
+  surface: string;
+  surfaceAlt: string;
+  border: string;
+  red: string;
+  redDark: string;
+  mint: string;
+  mintDark: string;
+  text: string;
+  textDim: string;
+  textMuted: string;
+  paper: string;
+  ink: string;
+  onRed: string;
+};
+
+export const LIGHT: Palette = {
   bg: '#ece6da', // Papel
   surface: '#e2dbcc',
   surfaceAlt: '#d7cfbe',
@@ -16,10 +34,78 @@ export const colors = {
   mintDark: '#d7261e', // trilho dos interruptores ligados
   text: '#141414', // Tinta
   textDim: '#57524a',
-  textMuted: '#8a8378',
+  textMuted: '#666058', // ≥ 4,5:1 sobre o papel
   paper: '#ece6da',
   ink: '#141414',
+  onRed: '#f6f1e7',
 };
+
+/** Tema escuro: o "negativo" do cartaz — fundo quase preto puxado para o marrom, tinta creme. */
+export const DARK: Palette = {
+  bg: '#151413',
+  surface: '#1e1c1a',
+  surfaceAlt: '#292623',
+  border: '#3b3732',
+  red: '#e2392e', // um pouco mais claro para manter o contraste no escuro
+  redDark: '#a3221a',
+  mint: '#ece6da',
+  mintDark: '#e2392e',
+  text: '#ece6da',
+  textDim: '#aba294',
+  textMuted: '#938c81', // ≥ 4,5:1 sobre o fundo escuro
+  paper: '#151413',
+  ink: '#ece6da',
+  onRed: '#f6f1e7',
+};
+
+export type ThemeMode = 'light' | 'dark' | 'system';
+
+/**
+ * Cores atuais. O objeto é o mesmo o tempo todo; `applyPalette` troca os valores. Os estilos leem as
+ * cores na hora (getters), então ao remontar as telas elas já saem com o tema novo.
+ */
+export const colors: Palette = { ...LIGHT };
+export let isDark = false;
+
+/** Muda a cada troca de tema; as folhas de estilo de `themed()` se refazem quando ele muda. */
+export let themeVersion = 0;
+
+export function applyPalette(dark: boolean) {
+  Object.assign(colors, dark ? DARK : LIGHT);
+  isDark = dark;
+  themeVersion += 1;
+}
+
+/**
+ * Folha de estilos que acompanha o tema: `factory` lê as cores atuais e é refeita (objetos novos, valores
+ * fixos) sempre que o tema muda. Assim nada fica preso no tema anterior — nem no Android, nem depois de
+ * um recarregamento parcial do Expo Go.
+ */
+export function themed<T extends object>(factory: () => T): T {
+  let version = -1;
+  let cache: T;
+  const current = () => {
+    if (version !== themeVersion) {
+      cache = factory();
+      version = themeVersion;
+    }
+    return cache;
+  };
+  return new Proxy({} as T, {
+    get: (_t, key) => (current() as any)[key],
+    has: (_t, key) => key in current(),
+    ownKeys: () => Reflect.ownKeys(current()),
+    getOwnPropertyDescriptor: (_t, key) => {
+      const d = Reflect.getOwnPropertyDescriptor(current(), key);
+      return d ? { ...d, configurable: true } : undefined;
+    },
+  });
+}
+
+// No web (simulador de testes) dá para abrir já no escuro com ?tema=escuro
+if (Platform.OS === 'web' && typeof window !== 'undefined' && /tema=escuro/.test(window.location?.search ?? '')) {
+  applyPalette(true);
+}
 
 /** Fonte condensada nativa de cada plataforma (sem dependências extras). */
 export const fonts = {

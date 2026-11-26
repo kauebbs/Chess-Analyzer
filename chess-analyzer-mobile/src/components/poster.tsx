@@ -1,7 +1,7 @@
 import React from 'react';
 import { Pressable, StyleProp, Text, View, ViewStyle } from 'react-native';
 import { Icon, IconName } from './Icon';
-import { colors, fonts } from '../theme';
+import { colors, fonts, themed } from '../theme';
 
 /**
  * Peças do estilo "cartaz": papel creme, tinta preta, vermelho de impressão, linhas finas,
@@ -120,7 +120,7 @@ export function PosterButton({
 }) {
   const filled = variant !== 'outline';
   const bg = variant === 'red' ? colors.red : variant === 'ink' ? colors.ink : 'transparent';
-  const fg = filled ? colors.paper : colors.ink;
+  const fg = variant === 'red' ? colors.onRed : filled ? colors.paper : colors.ink;
   return (
     <Pressable
       onPress={onPress}
@@ -133,7 +133,7 @@ export function PosterButton({
   );
 }
 
-const meta = {
+const meta = themed(() => ({
   row: {
     flexDirection: 'row' as const,
     justifyContent: 'space-between' as const,
@@ -152,9 +152,9 @@ const meta = {
     fontStyle: 'italic' as const,
     marginTop: 1,
   },
-};
+}));
 
-const sec = {
+const sec = themed(() => ({
   wrap: {
     flexDirection: 'row' as const,
     alignItems: 'baseline' as const,
@@ -178,9 +178,9 @@ const sec = {
     fontSize: 12,
     letterSpacing: 2.2,
   },
-};
+}));
 
-const row = {
+const row = themed(() => ({
   box: {
     flexDirection: 'row' as const,
     alignItems: 'center' as const,
@@ -210,9 +210,9 @@ const row = {
     fontSize: 12,
     marginTop: 1,
   },
-};
+}));
 
-const btn = {
+const btn = themed(() => ({
   box: {
     flexDirection: 'row' as const,
     alignItems: 'center' as const,
@@ -232,4 +232,4 @@ const btn = {
     fontSize: 14,
     letterSpacing: 1.6,
   },
-};
+}));

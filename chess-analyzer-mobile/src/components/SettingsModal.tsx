@@ -4,7 +4,7 @@ import { Sheet } from './Sheet';
 import { Piece } from './Piece';
 import { BoardView } from './BoardView';
 import { Celebration, CelebrationEvent } from './Celebration';
-import { BOARD_THEMES, colors, fonts } from '../theme';
+import { BOARD_THEMES, colors, fonts, ThemeMode, themed } from '../theme';
 import { PIECE_SETS } from '../pieces/pieceSets';
 import {
   AnimationPrefs,
@@ -16,6 +16,7 @@ import {
 } from '../settings/animation';
 import { playSound, SoundName, SoundPrefs, SoundVolume } from '../services/sounds';
 import { Icon } from './Icon';
+import { AboutSection } from './AboutSection';
 
 interface SettingsModalProps {
   visible: boolean;
@@ -32,9 +33,13 @@ interface SettingsModalProps {
   onAnimationChange: (a: AnimationPrefs) => void;
   sound: SoundPrefs;
   onSoundChange: (s: SoundPrefs) => void;
+  appTheme: ThemeMode;
+  onAppThemeChange: (m: ThemeMode) => void;
+  /** Troca de tema esperando a partida em andamento acabar. */
+  themePending: boolean;
 }
 
-type Tab = 'board' | 'animation' | 'sound';
+type Tab = 'board' | 'animation' | 'sound' | 'about';
 
 // Prévia: 1.e4 d5 → 2.exd5 (mostra deslize, captura e o selo do lance)
 const PREVIEW_A = 'rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 2';
@@ -56,6 +61,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onAnimationChange,
   sound,
   onSoundChange,
+  appTheme,
+  onAppThemeChange,
+  themePending,
 }) => {
   const [tab, setTab] = useState<Tab>('board');
   const theme = BOARD_THEMES[themeIdx];
@@ -71,16 +79,21 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             ['board', 'TABULEIRO'],
             ['animation', 'ANIMAÇÕES'],
             ['sound', 'SONS'],
+            ['about', 'SOBRE'],
           ] as [Tab, string][]
         ).map(([id, label]) => (
           <Pressable key={id} onPress={() => setTab(id)} style={[styles.tab, tab === id && styles.tabActive]}>
-            <Text style={[styles.tabText, tab === id && styles.tabTextActive]}>{label}</Text>
+            <Text style={[styles.tabText, tab === id && styles.tabTextActive]} numberOfLines={1} adjustsFontSizeToFit>
+              {label}
+            </Text>
           </Pressable>
         ))}
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
-        {tab === 'sound' ? (
+        {tab === 'about' ? (
+          <AboutSection />
+        ) : tab === 'sound' ? (
           <>
             <ToggleRow
               title="Sons"
@@ -131,6 +144,21 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           </>
         ) : tab === 'board' ? (
           <>
+            <Text style={[styles.section, { marginTop: 4 }]}>TEMA DO APP</Text>
+            <Segment
+              options={[
+                { id: 'light' as ThemeMode, label: 'Claro' },
+                { id: 'dark' as ThemeMode, label: 'Escuro' },
+                { id: 'system' as ThemeMode, label: 'Sistema' },
+              ]}
+              value={appTheme}
+              onChange={onAppThemeChange}
+            />
+            <Text style={styles.themeHint}>
+              {themePending
+                ? 'O tema muda assim que a partida em andamento acabar.'
+                : 'Escuro é o negativo do cartaz: fundo quase preto e tinta creme. "Sistema" segue o celular.'}
+            </Text>
             <ToggleRow
               title="Setas do motor"
               hint="Mostra o melhor lance e as boas alternativas no tabuleiro"
@@ -380,11 +408,18 @@ function Segment<T extends string>({
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
+  themeHint: {
+    color: colors.textMuted,
+    fontSize: 12,
+    fontStyle: 'italic',
+    marginTop: 6,
+    marginBottom: 14,
+  },
   tabs: {
     flexDirection: 'row',
     backgroundColor: colors.bg,
-    borderRadius: 10,
+    borderRadius: 4,
     padding: 3,
     marginBottom: 14,
   },
@@ -392,7 +427,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     paddingVertical: 8,
-    borderRadius: 8,
+    borderRadius: 4,
   },
   tabActive: {
     backgroundColor: colors.surfaceAlt,
@@ -401,8 +436,8 @@ const styles = StyleSheet.create({
     color: colors.textDim,
     fontFamily: fonts.condensed,
     fontWeight: '700',
-    fontSize: 12,
-    letterSpacing: 1.6,
+    fontSize: 11,
+    letterSpacing: 1,
   },
   tabTextActive: {
     color: colors.text,
@@ -413,7 +448,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
     backgroundColor: colors.bg,
-    borderRadius: 12,
+    borderRadius: 4,
     padding: 14,
     marginBottom: 8,
   },
@@ -446,7 +481,7 @@ const styles = StyleSheet.create({
   segment: {
     flexDirection: 'row',
     backgroundColor: colors.bg,
-    borderRadius: 10,
+    borderRadius: 4,
     padding: 3,
     marginBottom: 10,
   },
@@ -454,7 +489,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     paddingVertical: 8,
-    borderRadius: 8,
+    borderRadius: 4,
   },
   segItemActive: {
     backgroundColor: colors.red,
@@ -480,7 +515,7 @@ const styles = StyleSheet.create({
   mini: {
     width: 52,
     height: 52,
-    borderRadius: 8,
+    borderRadius: 4,
     overflow: 'hidden',
     borderWidth: 2,
     borderColor: 'transparent',
@@ -505,7 +540,7 @@ const styles = StyleSheet.create({
   },
   piecePreview: {
     flexDirection: 'row',
-    borderRadius: 8,
+    borderRadius: 4,
     overflow: 'hidden',
     borderWidth: 2,
     borderColor: 'transparent',
@@ -525,7 +560,7 @@ const styles = StyleSheet.create({
   previewCard: {
     alignItems: 'center',
     backgroundColor: colors.bg,
-    borderRadius: 12,
+    borderRadius: 4,
     paddingVertical: 14,
     paddingHorizontal: 10,
   },
@@ -538,7 +573,7 @@ const styles = StyleSheet.create({
   },
   previewBtn: {
     backgroundColor: colors.surfaceAlt,
-    borderRadius: 999,
+    borderRadius: 3,
     paddingHorizontal: 12,
     paddingVertical: 7,
   },
@@ -562,7 +597,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     backgroundColor: colors.bg,
-    borderRadius: 999,
+    borderRadius: 3,
     paddingHorizontal: 12,
     paddingVertical: 8,
   },
@@ -583,4 +618,4 @@ const styles = StyleSheet.create({
     fontSize: 13,
     textDecorationLine: 'underline',
   },
-});
+}));

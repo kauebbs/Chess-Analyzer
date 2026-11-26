@@ -17,10 +17,11 @@ import { Icon, IconName } from '../components/Icon';
 import { MoveList } from '../components/MoveList';
 import { Piece } from '../components/Piece';
 import { Celebration, CelebrationEvent } from '../components/Celebration';
-import { BOARD_THEMES, colors, fonts } from '../theme';
+import { BOARD_THEMES, colors, fonts, themed } from '../theme';
 import { isFirebaseConfigured } from '../config/firebase';
 import { ensureSignedIn, loadPlayerName, savePlayerName, serverNow } from '../online/firebase';
 import {
+  watchGame,
   answerDraw,
   cancelWaitingGame,
   claimTimeout,
@@ -53,11 +54,20 @@ import { reportResult } from '../online/tournamentService';
 import { ChatLine, ChatSheet, UnreadDot } from '../components/play/ChatSheet';
 import { playSound } from '../services/sounds';
 import { PosterHeading } from '../components/poster';
+import { CapturedRow, materialFromFen } from '../components/Captured';
+
+/** Se há peças capturadas por `color` ou vantagem dela (para trocar o status pelas capturas). */
+function materialShown(fen: string, color: Color) {
+  const { lost, diff } = materialFromFen(fen);
+  const taken = lost[color === 'w' ? 'b' : 'w'];
+  return Object.values(taken).some((n) => n > 0) || (color === 'w' ? diff : -diff) > 0;
+}
 
 interface OnlineScreenProps {
   visible: boolean;
   /** Código vindo de um link de convite. */
-  joinRequest: { code: string; nonce: number } | null;
+  /** Entrar numa sala por código; `watch` abre só para assistir (sem ocupar lugar). */
+  joinRequest: { code: string; nonce: number; watch?: boolean } | null;
   prefs: AnalysisPrefs;
   onOpenMenu: () => void;
   onAnalyze: (pgn: string, orientation: 'white' | 'black') => void;
@@ -157,6 +167,26 @@ export function OnlineScreen({
     };
   }, [code, configured]);
 
+  /** Abre a sala só para assistir (e conversar no chat). */
+  const spectate = useCallback(
+    async (raw: string, notice?: string) => {
+      const c = normalizeCode(raw);
+      setBusy(true);
+      setError(null);
+      try {
+        await watchGame(c);
+        setFlipped(false);
+        setCode(c);
+        showToast(notice ?? 'Você está assistindo · dá para conversar no chat');
+      } catch (e: any) {
+        setError(e?.message ?? 'Não foi possível abrir a sala.');
+      } finally {
+        setBusy(false);
+      }
+    },
+    [showToast]
+  );
+
   const join = useCallback(
     async (raw: string) => {
       const c = normalizeCode(raw);
@@ -173,18 +203,25 @@ export function OnlineScreen({
         setCode(c);
         showToast(color === 'w' ? 'Você joga de brancas' : 'Você joga de pretas');
       } catch (e: any) {
+        // Partida já começou com outras pessoas: entra assistindo
+        if (/já começou|antes de você/.test(e?.message ?? '')) {
+          setBusy(false);
+          await spectate(c, 'A partida já começou · você está assistindo');
+          return;
+        }
         setError(e?.message ?? 'Não foi possível entrar na sala.');
       } finally {
         setBusy(false);
       }
     },
-    [name, showToast]
+    [name, showToast, spectate]
   );
 
   // Convite aberto por link
   useEffect(() => {
     if (!joinRequest || !configured) return;
-    join(joinRequest.code);
+    if (joinRequest.watch) spectate(joinRequest.code);
+    else join(joinRequest.code);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [joinRequest?.nonce]);
 
@@ -209,7 +246,8 @@ export function OnlineScreen({
   };
 
   const leaveRoom = async () => {
-    if (code && game?.status === 'waiting') await cancelWaitingGame(code).catch(() => {});
+    const mine = game && uid ? myColor(game, uid) : null;
+    if (code && game?.status === 'waiting' && mine) await cancelWaitingGame(code).catch(() => {});
     setCode(null);
     setGame(null);
     setCelebration(null);
@@ -258,7 +296,7 @@ export function OnlineScreen({
 
   const timeoutClaimed = useRef<string | null>(null);
   useEffect(() => {
-    if (!game || !times || !playing || !code) return;
+    if (!game || !times || !playing || !code || !me) return;
     if (times[turn] <= 0 && timeoutClaimed.current !== `${code}:${game.moves}`) {
       timeoutClaimed.current = `${code}:${game.moves}`;
       claimTimeout(code).catch(() => {});
@@ -339,7 +377,7 @@ export function OnlineScreen({
     playSound('chat');
     if (!chatOpen) showToast(`${last.name}: ${last.text}`);
   }, [chat.length, game?.code]); // eslint-disable-line react-hooks/exhaustive-deps
-  const chatLines: ChatLine[] = chat.map((m) => ({ id: m.id, mine: m.uid === uid, name: m.name, text: m.text }));
+  const chatLines: ChatLine[] = chat.map((m) => ({ id: m.id, mine: m.uid === uid, name: m.name, text: m.text, spectator: m.spectator }));
   const chatBtn = (
     <View style={{ flex: 1 }}>
       <ActionBtn icon="chat" label="Chat" onPress={() => setChatOpen(true)} />
@@ -391,6 +429,10 @@ export function OnlineScreen({
     const seat = seatOf(c);
     return !!seat && !!presence[seat.uid];
   };
+  // Quem está conectado na sala sem ser um dos jogadores
+  const watchers = Object.keys(presence).filter(
+    (u) => presence[u] && u !== game?.white?.uid && u !== game?.black?.uid
+  ).length;
 
   // ---------- Telas ----------
   if (!configured) {
@@ -513,7 +555,6 @@ export function OnlineScreen({
                 placeholderTextColor={colors.textMuted}
                 autoCapitalize="characters"
                 autoCorrect={false}
-                maxLength={6}
                 onSubmitEditing={() => join(joinInput)}
                 style={[styles.input, styles.codeInput]}
               />
@@ -529,6 +570,9 @@ export function OnlineScreen({
                 {busy && joinInput ? <ActivityIndicator color="#fff" /> : <Icon name="next" size={22} color="#fff" />}
               </Pressable>
             </View>
+            <Text style={[styles.hint, { textAlign: 'left', marginTop: 8 }]}>
+              Se a partida já começou, você entra assistindo e pode conversar no chat.
+            </Text>
           </View>
 
           {error && <Text style={styles.error}>{error}</Text>}
@@ -543,6 +587,52 @@ export function OnlineScreen({
     return (
       <SafeAreaView style={[styles.container, { justifyContent: 'center' }]} edges={['top', 'bottom']}>
         <ActivityIndicator color={colors.mint} />
+      </SafeAreaView>
+    );
+  }
+
+  // Mesa de torneio (ou alguém assistindo): só "esperando", sem convite/código
+  if (game.status === 'waiting' && (game.tournament || !me)) {
+    const vs = game.tournament?.vs;
+    return (
+      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+        <Header title={game.tournament ? 'TORNEIO' : 'ASSISTINDO'} onHome={onOpenMenu} />
+        <ScrollView style={styles.scroll} contentContainerStyle={[styles.lobby, { alignItems: 'center', paddingTop: 36 }]}>
+          <View style={{ flexDirection: 'row', gap: 6 }}>
+            {me ? (
+              <Piece setId={prefs.pieceSet} color={me} type="k" size={64} />
+            ) : (
+              <>
+                <Piece setId={prefs.pieceSet} color="w" type="k" size={56} />
+                <Piece setId={prefs.pieceSet} color="b" type="k" size={56} />
+              </>
+            )}
+          </View>
+          <View style={{ alignSelf: 'stretch', marginTop: 18 }}>
+            <PosterHeading>{me ? 'Esperando\noponente' : 'Esperando\nos jogadores'}</PosterHeading>
+          </View>
+          <Text style={[styles.waitText, { alignSelf: 'stretch', textAlign: 'left' }]}>
+            {me
+              ? `${vs ? `Contra ${vs} · ` : ''}você joga de ${me === 'w' ? 'brancas' : 'pretas'}`
+              : 'A partida aparece aqui assim que os dois entrarem na mesa.'}
+            {game.clock ? ` · ${game.clock.initial / 60000}+${game.clock.increment / 1000}` : ''}
+          </Text>
+          <ActivityIndicator color={colors.mint} style={{ marginTop: 28 }} />
+          <Text style={styles.hint}>
+            {me ? 'A partida começa sozinha quando o adversário entrar na mesa.' : 'Você pode conversar no chat enquanto espera.'}
+          </Text>
+          <View style={{ width: '100%', gap: 10, marginTop: 22 }}>
+            {game.tournament && (
+              <SecondaryButton
+                icon="trophy"
+                label="VOLTAR AO TORNEIO"
+                onPress={() => onBackToTournament?.(game.tournament!.code)}
+              />
+            )}
+            {!me && <SecondaryButton icon="exit" label="SAIR" onPress={leaveRoom} />}
+          </View>
+        </ScrollView>
+        {toast && <Toast text={toast} bottom={24 + insets.bottom} />}
       </SafeAreaView>
     );
   }
@@ -616,11 +706,22 @@ export function OnlineScreen({
         <View style={styles.topBar}>
           <IconBtn name="home" label="Menu principal" onPress={onOpenMenu} />
           <Pressable onPress={shareInvite} style={({ pressed }) => [styles.roomChip, pressed && { opacity: 0.7 }]}>
+            {!me && (
+              <View style={styles.watchChip}>
+                <Icon name="eye" size={12} color={colors.onRed} strokeWidth={2.2} />
+                <Text style={styles.watchChipText}>ASSISTINDO</Text>
+              </View>
+            )}
             <Text style={styles.roomLabel}>{game.tournament ? 'TORNEIO' : game.series ? `MD${game.series.bestOf} · JOGO ${game.series.game}` : 'SALA'}</Text>
             <Text style={styles.roomText}>{game.code}</Text>
             {game.clock && (
               <Text style={styles.roomLabel}>
                 · {game.clock.initial / 60000}+{game.clock.increment / 1000}
+              </Text>
+            )}
+            {watchers > 0 && (
+              <Text style={styles.roomLabel}>
+                · <Icon name="eye" size={11} color={colors.textDim} /> {watchers}
               </Text>
             )}
           </Pressable>
@@ -648,6 +749,8 @@ export function OnlineScreen({
             online={isOnline(opponentColor)}
             time={times ? times[opponentColor] : null}
             active={playing && turn === opponentColor}
+            fen={chess.fen()}
+            pieceSet={prefs.pieceSet}
           />
           <View style={{ width: boardSize, height: boardSize, alignSelf: 'center' }}>
             <BoardView
@@ -677,6 +780,8 @@ export function OnlineScreen({
             online={isOnline(bottomColor)}
             time={times ? times[bottomColor] : null}
             active={playing && turn === bottomColor}
+            fen={chess.fen()}
+            pieceSet={prefs.pieceSet}
           />
 
           {opponentOffersDraw ? (
@@ -718,7 +823,23 @@ export function OnlineScreen({
         </View>
 
         <View style={styles.actions}>
-          {!finished ? (
+          {!me ? (
+            <>
+              {finished && (
+                <ActionBtn icon="review" label="Analisar" onPress={() => onAnalyze(onlinePgn(game), 'white')} />
+              )}
+              {game.tournament && (
+                <ActionBtn
+                  icon="trophy"
+                  label="Voltar ao torneio"
+                  highlight={finished}
+                  onPress={() => onBackToTournament?.(game.tournament!.code)}
+                />
+              )}
+              {chatBtn}
+              <ActionBtn icon="exit" label="Sair" onPress={leaveRoom} />
+            </>
+          ) : !finished ? (
             <>
               <ActionBtn
                 icon="flag"
@@ -802,8 +923,12 @@ export function OnlineScreen({
         visible={chatOpen}
         onClose={() => setChatOpen(false)}
         lines={chatLines}
-        onSend={(t) => code && sendChat(code, name, t).catch(() => showToast('Não foi possível enviar'))}
-        readOnlyHint={me ? null : 'Só quem está jogando pode escrever no bate-papo.'}
+        onSend={(t) =>
+          code &&
+          sendChat(code, name, t, !me).catch(() =>
+            showToast(me ? 'Não foi possível enviar' : 'Não foi possível enviar (publique as regras novas do Firebase)')
+          )
+        }
       />
       {toast && <Toast text={toast} bottom={96 + insets.bottom} />}
     </SafeAreaView>
@@ -829,7 +954,11 @@ function PlayerCard({
   online,
   time,
   active,
+  fen,
+  pieceSet,
 }: {
+  fen: string;
+  pieceSet: string;
   name: string;
   color: Color;
   isMe: boolean;
@@ -841,7 +970,7 @@ function PlayerCard({
   return (
     <View style={styles.playerCard}>
       <View style={[styles.avatar, color === 'w' ? styles.avatarWhite : styles.avatarBlack]}>
-        <Text style={[styles.avatarText, color === 'w' ? { color: colors.ink } : { color: colors.paper }]}>
+        <Text style={[styles.avatarText, { color: color === 'w' ? '#141414' : '#ece6da' }]}>
           {(name.trim()[0] ?? '?').toUpperCase()}
         </Text>
         <View style={[styles.presence, { backgroundColor: online ? colors.mint : colors.textMuted }]} />
@@ -851,9 +980,15 @@ function PlayerCard({
           {name}
           {isMe ? <Text style={styles.playerYou}>  (você)</Text> : null}
         </Text>
-        <Text style={[styles.playerSub, active && { color: colors.mint }]}>
-          {active ? 'jogando…' : online ? 'conectado' : 'desconectado'}
-        </Text>
+        {materialShown(fen, color) ? (
+          <View style={{ minHeight: 17, marginTop: 1, flexDirection: 'row', alignItems: 'center' }}>
+            <CapturedRow fen={fen} color={color} pieceSet={pieceSet} />
+          </View>
+        ) : (
+          <Text style={[styles.playerSub, active && { color: colors.mint }]}>
+            {active ? 'jogando…' : online ? 'conectado' : 'desconectado'}
+          </Text>
+        )}
       </View>
       {time !== null ? (
         <View style={[styles.clock, active && styles.clockActive, low && styles.clockLow]}>
@@ -973,7 +1108,7 @@ function Toast({ text, bottom }: { text: string; bottom: number }) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.bg,
@@ -1234,6 +1369,22 @@ const styles = StyleSheet.create({
     marginTop: 4,
     textAlign: 'center',
   },
+  watchChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: colors.red,
+    borderRadius: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    marginRight: 4,
+  },
+  watchChipText: {
+    color: colors.onRed,
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 1.4,
+  },
   cancelLink: {
     color: colors.textDim,
     textDecorationLine: 'underline',
@@ -1281,7 +1432,7 @@ const styles = StyleSheet.create({
   avatar: {
     width: 36,
     height: 36,
-    borderRadius: 10,
+    borderRadius: 4,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1333,7 +1484,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 8,
+    borderRadius: 4,
     backgroundColor: colors.surface,
   },
   clockActive: {
@@ -1365,7 +1516,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 12,
     marginBottom: 2,
     backgroundColor: colors.surface,
-    borderRadius: 10,
+    borderRadius: 4,
     paddingHorizontal: 12,
     paddingVertical: 7,
   },
@@ -1384,7 +1535,7 @@ const styles = StyleSheet.create({
   banner: {
     marginHorizontal: 12,
     marginTop: 6,
-    borderRadius: 10,
+    borderRadius: 4,
     paddingHorizontal: 14,
     paddingVertical: 9,
     minHeight: 40,
@@ -1414,11 +1565,11 @@ const styles = StyleSheet.create({
   smallBtn: {
     paddingHorizontal: 10,
     paddingVertical: 6,
-    borderRadius: 8,
+    borderRadius: 4,
     backgroundColor: colors.surfaceAlt,
   },
   smallBtnText: {
-    color: '#fff',
+    color: colors.text,
     fontFamily: fonts.condensedHeavy,
     fontWeight: '800',
     fontSize: 12,
@@ -1471,4 +1622,4 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 13,
   },
-});
+}));

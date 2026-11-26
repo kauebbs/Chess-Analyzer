@@ -202,7 +202,8 @@ export async function openTournamentTable(
   doc: OnlineTournamentDoc,
   key: string,
   myColor: 'w' | 'b',
-  name: string
+  name: string,
+  opponentName?: string
 ): Promise<string> {
   const existing = doc.links[key];
   if (existing) {
@@ -210,7 +211,9 @@ export async function openTournamentTable(
     return existing;
   }
   const tc: TimeControl | null = doc.settings.tc ? { label: '', ...doc.settings.tc } : null;
-  const mine = await createGame(name, myColor, tc, { tournament: { code: doc.code, key } });
+  const mine = await createGame(name, myColor, tc, {
+    tournament: { code: doc.code, key, ...(opponentName ? { vs: opponentName } : {}) },
+  });
   const res = await runTransaction(tRef(doc.code, `links/${key}`), (current) => current ?? mine);
   const winner = res.snapshot.val() as string;
   if (winner !== mine) {

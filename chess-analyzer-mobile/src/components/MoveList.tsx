@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { MoveClassification } from '../utils/moveClassifier';
-import { colors } from '../theme';
+import { colors, themed } from '../theme';
 
 interface MoveListProps {
   sans: string[];
@@ -94,7 +94,7 @@ export const MoveList: React.FC<MoveListProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   content: {
     alignItems: 'center',
     paddingHorizontal: 2,
@@ -150,4 +150,4 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     fontSize: 13,
   },
-});
+}));

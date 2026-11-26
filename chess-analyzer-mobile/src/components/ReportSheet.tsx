@@ -5,7 +5,7 @@ import { MoveBadge } from './MoveBadge';
 import { Icon, IconName } from './Icon';
 import { saveViewAsImage } from '../services/share';
 import { MOVE_KINDS, MoveKind, REPORT_ORDER } from '../utils/moveClassifier';
-import { colors, fonts } from '../theme';
+import { colors, fonts, themed } from '../theme';
 
 type Side = 'w' | 'b';
 
@@ -206,13 +206,13 @@ function Count({ value, color, onPress }: { value: number; color: string; onPres
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   capture: {
     backgroundColor: colors.surface,
     paddingVertical: 10,
     paddingHorizontal: 10,
     marginHorizontal: -10,
-    borderRadius: 10,
+    borderRadius: 4,
   },
   watermark: {
     color: colors.textMuted,
@@ -235,7 +235,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
     paddingVertical: 11,
-    borderRadius: 10,
+    borderRadius: 4,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.surfaceAlt,
@@ -310,7 +310,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 8,
     paddingHorizontal: 10,
-    borderRadius: 8,
+    borderRadius: 4,
   },
   boxWhite: {
     backgroundColor: '#ece8e1',
@@ -352,7 +352,7 @@ const styles = StyleSheet.create({
     marginTop: 14,
     alignItems: 'center',
     backgroundColor: colors.red,
-    borderRadius: 10,
+    borderRadius: 4,
     paddingVertical: 14,
   },
   primaryText: {
@@ -362,4 +362,4 @@ const styles = StyleSheet.create({
     fontSize: 16,
     letterSpacing: 1.5,
   },
-});
+}));

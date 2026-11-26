@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { Sheet } from './Sheet';
 import { Icon } from './Icon';
-import { colors, fonts } from '../theme';
+import { colors, fonts, themed } from '../theme';
 import { fetchGames, GameSource, GameSummary } from '../services/gameSources';
 
 export type Tab = 'pgn' | GameSource;
@@ -225,11 +225,11 @@ export const ImportModal: React.FC<ImportModalProps> = ({ visible, onClose, onLo
   );
 };
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   tabs: {
     flexDirection: 'row',
     backgroundColor: colors.bg,
-    borderRadius: 10,
+    borderRadius: 4,
     padding: 3,
     marginBottom: 14,
   },
@@ -237,7 +237,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     paddingVertical: 8,
-    borderRadius: 8,
+    borderRadius: 4,
   },
   tabActive: {
     backgroundColor: colors.surfaceAlt,
@@ -256,7 +256,7 @@ const styles = StyleSheet.create({
     height: 190,
     color: colors.text,
     backgroundColor: colors.bg,
-    borderRadius: 10,
+    borderRadius: 4,
     padding: 12,
     fontSize: 13,
     fontFamily: 'monospace',
@@ -268,7 +268,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
     backgroundColor: colors.red,
-    borderRadius: 10,
+    borderRadius: 4,
     paddingVertical: 13,
   },
   primaryText: {
@@ -286,7 +286,7 @@ const styles = StyleSheet.create({
     flex: 1,
     color: colors.text,
     backgroundColor: colors.bg,
-    borderRadius: 10,
+    borderRadius: 4,
     paddingHorizontal: 12,
     paddingVertical: 11,
     fontSize: 15,
@@ -296,7 +296,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.red,
-    borderRadius: 10,
+    borderRadius: 4,
   },
   error: {
     color: colors.red,
@@ -370,4 +370,4 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     fontSize: 11,
   },
-});
+}));

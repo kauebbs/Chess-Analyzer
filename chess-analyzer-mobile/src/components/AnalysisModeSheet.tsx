@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Sheet } from './Sheet';
 import { Icon, IconName } from './Icon';
 import { REVIEW_PRESETS, ReviewMode } from '../engine/presets';
-import { colors, fonts } from '../theme';
+import { colors, fonts, themed } from '../theme';
 
 interface AnalysisModeSheetProps {
   visible: boolean;
@@ -94,7 +94,7 @@ function Row({
       ]}
     >
       <View style={[styles.iconWrap, highlight && { backgroundColor: colors.red }]}>
-        <Icon name={icon} size={20} color="#fff" />
+        <Icon name={icon} size={20} color={highlight ? colors.onRed : colors.text} />
       </View>
       <View style={{ flex: 1 }}>
         <Text style={styles.rowTitle}>{title}</Text>
@@ -105,7 +105,7 @@ function Row({
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   section: {
     color: colors.textDim,
     fontFamily: fonts.condensed,
@@ -121,7 +121,7 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingVertical: 12,
     paddingHorizontal: 12,
-    borderRadius: 12,
+    borderRadius: 4,
     backgroundColor: colors.bg,
     marginBottom: 8,
   },
@@ -152,7 +152,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     backgroundColor: colors.bg,
-    borderRadius: 12,
+    borderRadius: 4,
     padding: 12,
   },
   runningText: {
@@ -162,7 +162,7 @@ const styles = StyleSheet.create({
   },
   cancel: {
     backgroundColor: colors.red,
-    borderRadius: 8,
+    borderRadius: 4,
     paddingHorizontal: 12,
     paddingVertical: 7,
   },
@@ -178,4 +178,4 @@ const styles = StyleSheet.create({
     marginTop: 6,
     marginBottom: 4,
   },
-});
+}));

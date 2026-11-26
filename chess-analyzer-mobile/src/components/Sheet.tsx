@@ -2,7 +2,7 @@ import React from 'react';
 import { KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon } from './Icon';
-import { colors, fonts } from '../theme';
+import { colors, fonts, themed } from '../theme';
 
 interface SheetProps {
   visible: boolean;
@@ -37,7 +37,7 @@ export const Sheet: React.FC<SheetProps> = ({ visible, title, onClose, children 
   );
 };
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   backdrop: {
     flex: 1,
     justifyContent: 'flex-end',
@@ -49,8 +49,8 @@ const styles = StyleSheet.create({
     maxWidth: 560,
     alignSelf: 'center',
     backgroundColor: colors.surface,
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
+    borderTopLeftRadius: 8,
+    borderTopRightRadius: 8,
     paddingHorizontal: 18,
     paddingTop: 8,
   },
@@ -76,4 +76,4 @@ const styles = StyleSheet.create({
     letterSpacing: 1.2,
     textTransform: 'uppercase',
   },
-});
+}));

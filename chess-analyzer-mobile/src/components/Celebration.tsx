@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import { Animated, Easing, Platform, StyleSheet, Text, View } from 'react-native';
 import { MOVE_KINDS } from '../utils/moveClassifier';
-import { colors, fonts } from '../theme';
+import { colors, fonts, themed } from '../theme';
 import { EffectIntensity, intensityScale } from '../settings/animation';
 import { Piece } from './Piece';
 
@@ -351,7 +351,8 @@ function Checkmate({
 }
 
 // ---------- Vitória / empate: cartão central + confete ----------
-const CONFETTI_COLORS = [colors.red, colors.mint, '#ffffff', '#f2c230', '#26c2a3', '#5b8bd6'];
+/** Confete nas cores do pôster (lido na hora, para seguir o tema claro/escuro). */
+const confettiColors = () => [colors.red, colors.ink, colors.red, colors.textDim, '#f2c230', colors.redDark];
 
 function Victory({
   size,
@@ -374,33 +375,34 @@ function Victory({
 }) {
   const p = useProgress(2400 + 600 * k, onDone);
   const count = Math.round(30 * k);
-  const pieces = useMemo(
-    () =>
-      confetti
+  const pieces = useMemo(() => {
+    const palette = confettiColors();
+    return confetti
         ? Array.from({ length: count }, (_, i) => ({
             x: (((i * 37) % 100) / 100) * size,
             drift: ((i * 53) % 40) - 20,
             w: 6 + (i % 3) * 3,
             h: 10 + (i % 4) * 3,
-            color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+            color: palette[i % palette.length],
             start: ((i * 13) % 30) / 100, // atraso relativo
             spin: 360 + (i % 5) * 180,
             sway: 8 + (i % 4) * 5,
           }))
-        : [],
-    [confetti, size, count]
-  );
+        : [];
+  }, [confetti, size, count]);
 
-  const cardW = Math.min(size * 0.84, 340);
-  const avatar = Math.max(34, Math.min(64, size * 0.15));
-  const titleFont = fitFont(title, cardW - 36, Math.min(30, size * 0.085), 9, 1.2);
-  const tone = confetti ? colors.mint : colors.textDim;
+  const cardW = Math.min(size * 0.86, 340);
+  const disc = Math.max(40, Math.min(70, size * 0.17));
+  const titleFont = fitFont(title.toUpperCase(), cardW - 40, Math.min(40, size * 0.11), 12, 1);
+  const accent = confetti ? colors.red : colors.textDim;
   const fade = p.interpolate({ inputRange: [0, 0.08, 0.86, 1], outputRange: [0, 1, 1, 0] });
 
   return (
     <>
-      {/* Escurece o tabuleiro para o cartão aparecer */}
-      <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.42)', opacity: fade }]} />
+      {/* Véu da cor do papel sobre o tabuleiro (no tema escuro, escuro) */}
+      <Animated.View
+        style={[StyleSheet.absoluteFill, { backgroundColor: colors.bg, opacity: Animated.multiply(fade, 0.72) }]}
+      />
 
       <View style={[StyleSheet.absoluteFill, styles.centerAll]}>
         <Animated.View
@@ -408,62 +410,69 @@ function Victory({
             styles.card,
             {
               width: cardW,
-              paddingTop: avatar * 0.62 + 10,
-              marginTop: avatar * 0.5,
+              paddingTop: disc * 0.55 + 14,
+              marginTop: disc * 0.5,
               opacity: fade,
               transform: [
-                { translateY: p.interpolate({ inputRange: [0, 0.1, 1], outputRange: [18, 0, 0], extrapolate: 'clamp' }) },
-                { scale: p.interpolate({ inputRange: [0, 0.1, 0.15, 0.86, 1], outputRange: [0.86, 1.04, 1, 1, 0.97] }) },
+                { translateY: p.interpolate({ inputRange: [0, 0.1, 1], outputRange: [16, 0, 0], extrapolate: 'clamp' }) },
+                { scale: p.interpolate({ inputRange: [0, 0.1, 0.15, 0.86, 1], outputRange: [0.9, 1.03, 1, 1, 0.98] }) },
               ],
             },
           ]}
         >
-          {/* Rei do vencedor (ou os dois no empate) saindo do topo do cartão */}
+          {/* Marcas de registro, como nos cartazes */}
+          <Text style={[styles.cross, { left: 8 }]} allowFontScaling={false}>+</Text>
+          <Text style={[styles.cross, { right: 8 }]} allowFontScaling={false}>+</Text>
+
+          {/* Disco com o rei do vencedor (ou os dois reis no empate) */}
           <View
             style={[
-              styles.avatar,
+              styles.disc,
               {
-                width: avatar,
-                height: avatar,
-                borderRadius: avatar / 2,
-                top: -avatar / 2,
-                left: cardW / 2 - avatar / 2,
-                borderColor: tone,
+                width: disc,
+                height: disc,
+                borderRadius: disc / 2,
+                top: -disc / 2,
+                left: cardW / 2 - disc / 2 - 1.5,
+                backgroundColor: confetti ? colors.red : colors.surfaceAlt,
               },
             ]}
           >
             {winner ? (
-              <Piece setId={pieceSet} color={winner} type="k" size={avatar * 0.74} />
+              <Piece setId={pieceSet} color={winner} type="k" size={disc * 0.72} />
             ) : (
               <View style={{ flexDirection: 'row' }}>
-                <Piece setId={pieceSet} color="w" type="k" size={avatar * 0.5} />
-                <Piece setId={pieceSet} color="b" type="k" size={avatar * 0.5} />
+                <Piece setId={pieceSet} color="w" type="k" size={disc * 0.48} />
+                <Piece setId={pieceSet} color="b" type="k" size={disc * 0.48} />
               </View>
             )}
           </View>
 
-          <Text style={[styles.kicker, { color: tone }]} allowFontScaling={false}>
-            {confetti ? 'FIM DE PARTIDA' : 'PARTIDA ENCERRADA'}
-          </Text>
           <Text
-            style={[styles.cardTitle, { fontSize: titleFont, lineHeight: titleFont * 1.15 }]}
+            style={[styles.kicker, { color: accent, fontSize: Math.max(8, Math.min(11, size * 0.032)) }]}
             numberOfLines={1}
             adjustsFontSizeToFit
             allowFontScaling={false}
           >
-            {title}
+            {confetti ? 'FIM DE PARTIDA —' : 'PARTIDA ENCERRADA —'}
           </Text>
-          <View style={[styles.cardRule, { backgroundColor: tone }]} />
-          <View style={styles.resultPill}>
-            <Text
-              style={[styles.resultText, { fontSize: fitFont(subtitle, cardW - 64, 12, 8, 1.6) }]}
-              numberOfLines={1}
-              adjustsFontSizeToFit
-              allowFontScaling={false}
-            >
-              {subtitle}
-            </Text>
-          </View>
+          <Text
+            style={[styles.cardTitle, { fontSize: titleFont, lineHeight: titleFont * 1.02 }]}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            allowFontScaling={false}
+          >
+            {title.toUpperCase()}
+          </Text>
+          <View style={[styles.cardRule, { backgroundColor: accent }]} />
+          <Text
+            style={[styles.resultText, { fontSize: fitFont(subtitle, cardW - 40, 14, 9, 0.2) }]}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            allowFontScaling={false}
+          >
+            {subtitle}
+          </Text>
         </Animated.View>
       </View>
 
@@ -504,7 +513,7 @@ function Victory({
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   layer: {
     overflow: 'hidden',
     zIndex: 20,
@@ -582,66 +591,57 @@ const styles = StyleSheet.create({
   },
   card: {
     alignItems: 'center',
-    backgroundColor: 'rgba(16, 16, 18, 0.96)',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    paddingHorizontal: 18,
-    paddingBottom: 16,
-    shadowColor: '#000',
-    shadowOpacity: 0.55,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 14,
+    backgroundColor: colors.bg,
+    borderRadius: 4,
+    borderWidth: 1.5,
+    borderColor: colors.ink,
+    paddingHorizontal: 20,
+    paddingBottom: 18,
   },
-  avatar: {
+  cross: {
     position: 'absolute',
-    backgroundColor: '#1c1c1f',
-    borderWidth: 2,
+    top: 4,
+    color: colors.red,
+    fontSize: 18,
+    fontWeight: '300',
+    includeFontPadding: false,
+  },
+  disc: {
+    position: 'absolute',
+    borderWidth: 1.5,
+    borderColor: colors.ink,
     alignItems: 'center',
     justifyContent: 'center',
   },
   kicker: {
     fontFamily: fonts.condensed,
     fontWeight: '800',
-    fontSize: 10,
+    fontSize: 11,
     letterSpacing: 2.6,
     paddingLeft: 2.6,
     includeFontPadding: false,
   },
   cardTitle: {
     alignSelf: 'stretch',
-    color: '#fff',
+    color: colors.ink,
     fontFamily: fonts.condensedHeavy,
     fontWeight: '900',
-    letterSpacing: 1.2,
-    paddingLeft: 1.2,
+    letterSpacing: 1,
+    paddingLeft: 1,
     textAlign: 'center',
-    marginTop: 4,
+    marginTop: 6,
     includeFontPadding: false,
   },
   cardRule: {
-    width: 34,
-    height: 3,
-    borderRadius: 2,
-    marginTop: 10,
+    width: 40,
+    height: 2,
+    marginTop: 12,
     marginBottom: 10,
   },
-  resultPill: {
-    backgroundColor: '#1c1c1f',
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-  },
   resultText: {
-    color: colors.text,
-    fontFamily: fonts.condensed,
-    fontWeight: '700',
-    fontSize: 12,
-    letterSpacing: 1.6,
-    paddingLeft: 1.6,
+    color: colors.textDim,
+    fontStyle: 'italic',
+    fontSize: 14,
     includeFontPadding: false,
   },
-});
+}));

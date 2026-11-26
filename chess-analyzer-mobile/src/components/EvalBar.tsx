@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { Animated, Easing, Platform, StyleSheet, Text, View } from 'react-native';
 import { cpToWinPercent, EvalData } from '../utils/moveClassifier';
-import { colors, fonts } from '../theme';
+import { colors, fonts, themed } from '../theme';
 
 interface EvalBarProps {
   evaluation: EvalData | null;
@@ -71,7 +71,7 @@ export const EvalBar: React.FC<EvalBarProps> = ({ evaluation, width, flipped = f
   );
 };
 
-const styles = StyleSheet.create({
+const styles = themed(() => StyleSheet.create({
   container: {
     height: 18,
     overflow: 'hidden',
@@ -94,4 +94,4 @@ const styles = StyleSheet.create({
     fontSize: 12,
     letterSpacing: 0.3,
   },
-});
+}));

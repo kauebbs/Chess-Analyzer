@@ -38,7 +38,9 @@ export type IconName =
   | 'play'
   | 'list'
   | 'chat'
-  | 'volume';
+  | 'volume'
+  | 'eye'
+  | 'exit';
 
 interface IconProps {
   name: IconName;
@@ -270,6 +272,21 @@ export const Icon: React.FC<IconProps> = ({ name, size = 22, color = '#fff', str
             <Path {...common} d="M3 6h.01" />
             <Path {...common} d="M3 12h.01" />
             <Path {...common} d="M3 18h.01" />
+          </>
+        );
+      case 'eye':
+        return (
+          <>
+            <Path {...common} d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" />
+            <Circle {...common} cx="12" cy="12" r="3" />
+          </>
+        );
+      case 'exit':
+        return (
+          <>
+            <Path {...common} d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+            <Path {...common} d="M16 17l5-5-5-5" />
+            <Path {...common} d="M21 12H9" />
           </>
         );
       case 'users':

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { Icon, IconName } from '../Icon';
 import { Avatar, Card, SeriesPips } from './ui';
-import { colors, fonts } from '../../theme';
+import { colors, fonts, themed } from '../../theme';
 import {
   bestOfLabel,
   formatLabel,
@@ -255,7 +255,7 @@ function Bracket({ t, isYou }: { t: Tournament; isYou: (id: string) => boolean }
   );
 }
 
-const styles = {
+const styles = themed(() => ({
   headerCard: {
     alignItems: 'center' as const,
     gap: 2,
@@ -284,7 +284,7 @@ const styles = {
   champion: {
     alignItems: 'center' as const,
     backgroundColor: colors.mint,
-    borderRadius: 16,
+    borderRadius: 4,
     paddingVertical: 18,
     paddingHorizontal: 16,
     gap: 2,
@@ -311,14 +311,14 @@ const styles = {
   tabs: {
     flexDirection: 'row' as const,
     backgroundColor: colors.surface,
-    borderRadius: 10,
+    borderRadius: 4,
     padding: 3,
   },
   tab: {
     flex: 1,
     alignItems: 'center' as const,
     paddingVertical: 8,
-    borderRadius: 8,
+    borderRadius: 4,
   },
   tabActive: {
     backgroundColor: colors.surfaceAlt,
@@ -336,7 +336,7 @@ const styles = {
   roundChip: {
     paddingHorizontal: 12,
     paddingVertical: 7,
-    borderRadius: 999,
+    borderRadius: 3,
     backgroundColor: colors.surface,
   },
   roundChipActive: {
@@ -391,7 +391,7 @@ const styles = {
     justifyContent: 'center' as const,
     gap: 6,
     backgroundColor: colors.surfaceAlt,
-    borderRadius: 10,
+    borderRadius: 4,
     paddingVertical: 9,
     marginTop: 2,
   },
@@ -410,7 +410,7 @@ const styles = {
     alignItems: 'center' as const,
     paddingVertical: 9,
     paddingHorizontal: 4,
-    borderRadius: 8,
+    borderRadius: 4,
   },
   trHead: {
     borderBottomWidth: 1,
@@ -452,7 +452,7 @@ const styles = {
   },
   bMatch: {
     backgroundColor: colors.surface,
-    borderRadius: 10,
+    borderRadius: 4,
     overflow: 'hidden' as const,
   },
   bSide: {
@@ -474,5 +474,5 @@ const styles = {
     fontWeight: '900' as const,
     fontSize: 14,
   },
-};
+}));
 
