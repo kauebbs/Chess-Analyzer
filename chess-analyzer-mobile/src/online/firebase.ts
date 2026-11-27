@@ -1,7 +1,8 @@
 import { Platform } from 'react-native';
-import { FirebaseApp, getApp, getApps, initializeApp } from 'firebase/app';
-import { Auth, getAuth, initializeAuth, onAuthStateChanged, signInAnonymously } from 'firebase/auth';
-import { Database, getDatabase, onValue, ref } from 'firebase/database';
+import type { FirebaseApp } from 'firebase/app';
+import type { Auth } from 'firebase/auth';
+import type { Database } from 'firebase/database';
+import { getDatabase, onValue, ref } from './firebaseDb';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { FIREBASE_CONFIG } from '../config/firebase';
 
@@ -10,8 +11,15 @@ let auth: Auth | null = null;
 let db: Database | null = null;
 let serverOffset = 0;
 
+// O SDK do Firebase só é carregado aqui, no primeiro uso do online (e não na abertura do app)
+type AuthModule = typeof import('firebase/auth');
+
 function init() {
   if (app) return;
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { getApp, getApps, initializeApp } = require('firebase/app') as typeof import('firebase/app');
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { getAuth, initializeAuth } = require('firebase/auth') as AuthModule;
   app = getApps().length ? getApp() : initializeApp(FIREBASE_CONFIG);
 
   if (Platform.OS === 'web') {
@@ -48,6 +56,7 @@ export async function ensureSignedIn(): Promise<string> {
   init();
   if (auth!.currentUser) return auth!.currentUser.uid;
   // Espera o login salvo carregar antes de criar outro
+  const { onAuthStateChanged, signInAnonymously } = require('firebase/auth') as AuthModule;
   const existing = await new Promise<string | null>((resolve) => {
     const unsub = onAuthStateChanged(auth!, (user) => {
       unsub();

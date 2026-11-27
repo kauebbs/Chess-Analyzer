@@ -57,7 +57,7 @@ import {
   writeState,
 } from '../online/tournamentService';
 import { copyText } from '../services/share';
-import { PosterHeading, PosterRow } from '../components/poster';
+import { MascotHero, PosterRow, Tone } from '../components/poster';
 
 export type PlayAction = 'hub' | 'bot' | 'botbot' | 'tournament';
 
@@ -71,7 +71,7 @@ interface PlayScreenProps {
   /** Abre uma sala online (mesa de torneio). */
   /** Abre uma mesa online (`watch` = só assistir). */
   onOpenOnlineGame: (code: string, watch?: boolean) => void;
-  onAnalyze: (pgn: string, orientation: 'white' | 'black') => void;
+  onAnalyze: (pgn: string, orientation: 'white' | 'black', backLabel?: string) => void;
   /** Barra de navegação: some durante as partidas; aba ativa conforme a área. */
   onNavChange?: (state: { visible: boolean; tab: 'play' | 'tournament'; root: boolean }) => void;
 }
@@ -86,6 +86,8 @@ interface GameLaunch {
   title: string;
   back: Route;
   onSingleResult?: (result: GameResult, reason: string, pgn: string) => void;
+  /** MD3/MD5 do torneio: o próximo jogo da mesma série, se ainda houver. */
+  nextInSeries?: () => (() => void) | null;
   restart?: () => void;
 }
 
@@ -284,6 +286,15 @@ export function PlayScreen({
       title: `${roundName(cur.t, cur.t.current).toUpperCase()}${m.bestOf > 1 ? ` · JOGO ${p.gameIndex + 1}` : ''}`,
       back: { name: 'tlocal' },
       onSingleResult: (result, reason, pgn) => recordLocal(p.matchId, p.gameIndex, result, { reason, pgn }),
+      nextInSeries: () => {
+        const now = localRef.current;
+        if (!now || m.bestOf <= 1) return null;
+        const m2 = now.t.rounds[now.t.current]?.find((x) => x.id === p.matchId);
+        const n = m2 ? pendingGame(m2) : null;
+        if (!m2 || !n || !m2.b) return null;
+        return () =>
+          playLocalGame({ matchId: m2.id, gameIndex: n.index, white: n.game.white, black: n.game.black, tiebreak: false }, watch);
+      },
     });
   };
 
@@ -571,6 +582,7 @@ export function PlayScreen({
         onAnalyze={onAnalyze}
         onRestart={l.restart}
         onSingleResult={l.onSingleResult}
+        nextInSeries={l.nextInSeries}
       />
     );
   }
@@ -589,7 +601,7 @@ export function PlayScreen({
         busy={busy}
         error={error}
         initial={{
-          name: route.online ? 'Torneio dos Amigos' : 'Copa Chess Analyzer',
+          name: route.online ? 'Torneio dos Amigos' : 'Copa Noxari',
           format: 'roundrobin',
           bestOf: 1,
           tcId: '5+0',
@@ -674,7 +686,7 @@ export function PlayScreen({
     const players = participantsOf(doc);
     const share = async () => {
       const link = tournamentLink(doc.code);
-      const message = `Bora jogar o torneio "${doc.name}"? 🏆\n${link}\n\nOu abra o Chess Analyzer → Jogar → Torneio → código ${doc.code}`;
+      const message = `Bora jogar o torneio "${doc.name}"? 🏆\n${link}\n\nOu abra o Noxari Chess → Jogar → Torneio → código ${doc.code}`;
       try {
         await Share.share({ message });
       } catch {
@@ -725,7 +737,7 @@ export function PlayScreen({
                   {p.kind === 'bot' && <Text style={styles.playerTag}>{p.rating}</Text>}
                   {isHost && p.uid !== uid && (
                     <Pressable onPress={() => removePlayer(doc.code, p.id)} accessibilityLabel={`Remover ${p.name}`} hitSlop={8}>
-                      <Icon name="close" size={18} color={colors.red} />
+                      <Icon name="close" size={18} color={colors.danger} />
                     </Pressable>
                   )}
                 </View>
@@ -785,10 +797,7 @@ export function PlayScreen({
       <SafeAreaView style={ui.screen} edges={['top', 'bottom']}>
         <Header title="TORNEIO" onBack={() => setRoute({ name: 'hub' })} />
         <ScrollView style={ui.scroll} contentContainerStyle={ui.content} keyboardShouldPersistTaps="handled">
-          <View style={ui.hero}>
-            <PosterHeading>Torneios</PosterHeading>
-            <Text style={ui.heroText}>Pontos corridos ou mata-mata · partida única, MD3 ou MD5.</Text>
-          </View>
+          <MascotHero pose="oculos" tone="yellow" side="left" title="Torneios" text="Pontos corridos ou mata-mata, em partida única, MD3 ou MD5." mascotHeight={112} />
 
           {localT && (
             <HubItem
@@ -857,17 +866,16 @@ export function PlayScreen({
     <SafeAreaView style={ui.screen} edges={['top', 'bottom']}>
       <Header title="JOGAR" icon="home" onBack={onOpenMenu} />
       <ScrollView style={ui.scroll} contentContainerStyle={ui.content}>
-        <View style={ui.hero}>
-          <PosterHeading>{'Escolha\no modo'}</PosterHeading>
-          <Text style={ui.heroText}>
-            Bots de 400 a 3000, séries MD3/MD5 e torneios.
-            {engineStatus === 'loading' ? ' Carregando o motor…' : ''}
-          </Text>
-        </View>
-        <HubItem icon="bot" title="Contra o bot" subtitle="Rating de 400 a 3000" onPress={() => setRoute({ name: 'vsbot' })} />
-        <HubItem icon="users" title="Contra um amigo" subtitle="Sala online com link" onPress={onOpenFriend} />
-        <HubItem icon="swords" title="Bot x Bot" subtitle="Assista dois bots se enfrentando" onPress={() => setRoute({ name: 'botbot' })} />
-        <HubItem icon="trophy" title="Torneio" subtitle="Local, só de bots ou online" onPress={() => setRoute({ name: 'thub' })} />
+        <MascotHero
+          pose="rei"
+          tone="green"
+          title={'Bora jogar?'}
+          text={`Bots de 400 a 3000 com personalidade, séries MD3/MD5 e torneios.${engineStatus === 'loading' ? ' Carregando o motor…' : ''}`}
+        />
+        <HubItem icon="bot" tone="green" title="Contra o bot" subtitle="Rating de 400 a 3000" onPress={() => setRoute({ name: 'vsbot' })} />
+        <HubItem icon="users" tone="blue" title="Contra um amigo" subtitle="Sala online com link" onPress={onOpenFriend} />
+        <HubItem icon="swords" tone="orange" title="Bot x Bot" subtitle="Assista dois bots se enfrentando" onPress={() => setRoute({ name: 'botbot' })} />
+        <HubItem icon="trophy" tone="yellow" title="Torneio" subtitle="Local, só de bots ou online" onPress={() => setRoute({ name: 'thub' })} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -879,14 +887,16 @@ function HubItem({
   subtitle,
   onPress,
   accent = false,
+  tone = 'green',
 }: {
   icon: IconName;
   title: string;
   subtitle: string;
   onPress: () => void;
   accent?: boolean;
+  tone?: Tone;
 }) {
-  return <PosterRow title={title} subtitle={subtitle} onPress={onPress} icon={accent ? 'play' : 'next'} />;
+  return <PosterRow title={title} subtitle={subtitle} onPress={onPress} badge={icon} tone={tone} icon={accent ? 'play' : 'next'} />;
 }
 
 function AddBotRow({ onAdd }: { onAdd: (rating: number) => void }) {
@@ -896,12 +906,12 @@ function AddBotRow({ onAdd }: { onAdd: (rating: number) => void }) {
     return (
       <Pressable onPress={() => setOpen(true)} style={styles.addBot}>
         <Icon name="plus" size={16} color={colors.mint} />
-        <Text style={{ color: colors.mint, fontWeight: '700', fontSize: 13 }}>Adicionar bot</Text>
+        <Text style={{ color: colors.mint, fontFamily: 'Nunito_700Bold', fontSize: 13 }}>Adicionar bot</Text>
       </Pressable>
     );
   }
   return (
-    <View style={{ gap: 8, backgroundColor: colors.bg, borderRadius: 4, padding: 10 }}>
+    <View style={{ gap: 8, backgroundColor: colors.bg, borderRadius: 12, padding: 10 }}>
       <RatingPicker value={rating} onChange={setRating} compact />
       <Text style={[ui.hint, { marginTop: -4 }]}>{ratingLabel(rating)}</Text>
       <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -930,7 +940,7 @@ const styles = themed(() => ({
     alignItems: 'center' as const,
     gap: 14,
     backgroundColor: colors.surface,
-    borderRadius: 4,
+    borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 14,
   },
@@ -940,7 +950,7 @@ const styles = themed(() => ({
   hubIcon: {
     width: 44,
     height: 44,
-    borderRadius: 4,
+    borderRadius: 12,
     backgroundColor: colors.surfaceAlt,
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
@@ -948,9 +958,10 @@ const styles = themed(() => ({
   hubTitle: {
     color: colors.text,
     fontSize: 16,
-    fontWeight: '800' as const,
+    fontFamily: 'Nunito_800ExtraBold',
   },
   hubSub: {
+    fontFamily: 'Nunito_600SemiBold',
     color: colors.textDim,
     fontSize: 12,
     marginTop: 2,
@@ -958,7 +969,6 @@ const styles = themed(() => ({
   code: {
     color: colors.text,
     fontFamily: fonts.condensedHeavy,
-    fontWeight: '900' as const,
     fontSize: 42,
     letterSpacing: 8,
     paddingLeft: 8,
@@ -966,7 +976,7 @@ const styles = themed(() => ({
   big: {
     color: colors.text,
     fontSize: 17,
-    fontWeight: '800' as const,
+    fontFamily: 'Nunito_800ExtraBold',
     textAlign: 'center' as const,
   },
   playerRow: {
@@ -979,12 +989,12 @@ const styles = themed(() => ({
     flex: 1,
     color: colors.text,
     fontSize: 14,
-    fontWeight: '700' as const,
+    fontFamily: 'Nunito_700Bold',
   },
   playerTag: {
     color: colors.textMuted,
     fontSize: 12,
-    fontWeight: '500' as const,
+    fontFamily: 'Nunito_600SemiBold',
   },
   addBot: {
     flexDirection: 'row' as const,
@@ -994,7 +1004,7 @@ const styles = themed(() => ({
     borderWidth: 1,
     borderColor: colors.mint,
     borderStyle: 'dashed' as const,
-    borderRadius: 4,
+    borderRadius: 12,
     paddingVertical: 10,
   },
   codeInput: {
@@ -1002,7 +1012,7 @@ const styles = themed(() => ({
     minWidth: 0,
     width: '100%' as const,
     letterSpacing: 6,
-    fontWeight: '800' as const,
+    fontFamily: 'Nunito_800ExtraBold',
     fontSize: 20,
     textAlign: 'center' as const,
   },
@@ -1010,10 +1020,11 @@ const styles = themed(() => ({
     width: 54,
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
-    borderRadius: 4,
+    borderRadius: 12,
     backgroundColor: colors.red,
   },
   dangerLink: {
+    fontFamily: 'Nunito_600SemiBold',
     color: colors.textDim,
     textDecorationLine: 'underline' as const,
     fontSize: 13,

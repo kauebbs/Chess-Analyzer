@@ -98,8 +98,8 @@ export const ImportModal: React.FC<ImportModalProps> = ({ visible, onClose, onLo
     const meWhite = game.white.toLowerCase() === me;
     const meBlack = game.black.toLowerCase() === me;
     let outcome: { label: string; color: string } = { label: '½', color: colors.textDim };
-    if (game.result === '1-0') outcome = meBlack ? { label: 'D', color: colors.red } : { label: 'V', color: colors.mint };
-    if (game.result === '0-1') outcome = meWhite ? { label: 'D', color: colors.red } : { label: 'V', color: colors.mint };
+    if (game.result === '1-0') outcome = meBlack ? { label: 'D', color: colors.danger } : { label: 'V', color: colors.mint };
+    if (game.result === '0-1') outcome = meWhite ? { label: 'D', color: colors.danger } : { label: 'V', color: colors.mint };
     if (!meWhite && !meBlack && game.result !== '1/2-1/2') outcome = { label: game.result, color: colors.textDim };
 
     return (
@@ -229,7 +229,7 @@ const styles = themed(() => StyleSheet.create({
   tabs: {
     flexDirection: 'row',
     backgroundColor: colors.bg,
-    borderRadius: 4,
+    borderRadius: 12,
     padding: 3,
     marginBottom: 14,
   },
@@ -237,7 +237,7 @@ const styles = themed(() => StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     paddingVertical: 8,
-    borderRadius: 4,
+    borderRadius: 12,
   },
   tabActive: {
     backgroundColor: colors.surfaceAlt,
@@ -245,7 +245,6 @@ const styles = themed(() => StyleSheet.create({
   tabText: {
     color: colors.textDim,
     fontFamily: fonts.condensed,
-    fontWeight: '700',
     fontSize: 14,
     letterSpacing: 0.5,
   },
@@ -256,7 +255,7 @@ const styles = themed(() => StyleSheet.create({
     height: 190,
     color: colors.text,
     backgroundColor: colors.bg,
-    borderRadius: 4,
+    borderRadius: 12,
     padding: 12,
     fontSize: 13,
     fontFamily: 'monospace',
@@ -268,13 +267,15 @@ const styles = themed(() => StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
     backgroundColor: colors.red,
-    borderRadius: 4,
+    borderRadius: 16,
     paddingVertical: 13,
+    borderWidth: 2,
+    borderBottomWidth: 5,
+    borderColor: colors.redDark,
   },
   primaryText: {
     color: '#fff',
     fontFamily: fonts.condensedHeavy,
-    fontWeight: '800',
     fontSize: 15,
     letterSpacing: 1.2,
   },
@@ -283,10 +284,11 @@ const styles = themed(() => StyleSheet.create({
     gap: 8,
   },
   searchInput: {
+    fontFamily: 'Nunito_600SemiBold',
     flex: 1,
     color: colors.text,
     backgroundColor: colors.bg,
-    borderRadius: 4,
+    borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 11,
     fontSize: 15,
@@ -296,14 +298,16 @@ const styles = themed(() => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.red,
-    borderRadius: 4,
+    borderRadius: 12,
   },
   error: {
-    color: colors.red,
+    fontFamily: 'Nunito_600SemiBold',
+    color: colors.danger,
     marginTop: 10,
     fontSize: 13,
   },
   hint: {
+    fontFamily: 'Nunito_600SemiBold',
     color: colors.textMuted,
     fontSize: 13,
     textAlign: 'center',
@@ -333,20 +337,21 @@ const styles = themed(() => StyleSheet.create({
   dot: {
     width: 9,
     height: 9,
-    borderRadius: 2,
+    borderRadius: 8,
   },
   playerName: {
+    fontFamily: 'Nunito_600SemiBold',
     color: colors.textDim,
     fontSize: 14,
     flexShrink: 1,
   },
   me: {
     color: colors.text,
-    fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
   },
   elo: {
     color: colors.textMuted,
-    fontWeight: '400',
+    fontFamily: 'Nunito_600SemiBold',
   },
   gameMeta: {
     alignItems: 'flex-end',
@@ -357,16 +362,16 @@ const styles = themed(() => StyleSheet.create({
     minWidth: 26,
     alignItems: 'center',
     borderWidth: 1,
-    borderRadius: 4,
+    borderRadius: 12,
     paddingHorizontal: 5,
     paddingVertical: 1,
   },
   outcomeText: {
     fontFamily: fonts.condensedHeavy,
-    fontWeight: '800',
     fontSize: 12,
   },
   metaText: {
+    fontFamily: 'Nunito_600SemiBold',
     color: colors.textMuted,
     fontSize: 11,
   },

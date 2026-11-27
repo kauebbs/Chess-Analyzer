@@ -16,7 +16,7 @@ const TABS: { id: NavTab; icon: IconName; label: string }[] = [
 
 export const NAV_HEIGHT = 58;
 
-/** Barra de navegação inferior no estilo cartaz: linha fina, ícones em traço, aba ativa em vermelho. */
+/** Barra inferior Noxari: aba ativa num "selo" verde arredondado, ícones de traço grosso. */
 export function NavBar({ active, onSelect }: { active: NavTab | null; onSelect: (tab: NavTab) => void }) {
   const insets = useSafeAreaInsets();
   return (
@@ -24,7 +24,6 @@ export function NavBar({ active, onSelect }: { active: NavTab | null; onSelect: 
       <View style={styles.row}>
         {TABS.map((t) => {
           const on = active === t.id;
-          const tint = on ? colors.red : colors.ink;
           return (
             <Pressable
               key={t.id}
@@ -34,10 +33,11 @@ export function NavBar({ active, onSelect }: { active: NavTab | null; onSelect: 
               accessibilityLabel={t.label}
               style={({ pressed }) => [styles.tab, pressed && { opacity: 0.6 }]}
             >
-              <View style={[styles.marker, on && { backgroundColor: colors.red }]} />
-              <Icon name={t.icon} size={21} color={tint} strokeWidth={on ? 2 : 1.6} />
-              <Text style={[styles.label, { color: on ? colors.red : colors.textDim }]} numberOfLines={1}>
-                {t.label.toUpperCase()}
+              <View style={[styles.pill, on && styles.pillOn]}>
+                <Icon name={t.icon} size={21} color={on ? colors.brandText : colors.textMuted} strokeWidth={on ? 2.4 : 2} />
+              </View>
+              <Text style={[styles.label, { color: on ? colors.brandText : colors.textMuted }]} numberOfLines={1}>
+                {t.label}
               </Text>
             </Pressable>
           );
@@ -49,9 +49,9 @@ export function NavBar({ active, onSelect }: { active: NavTab | null; onSelect: 
 
 const styles = themed(() => ({
   bar: {
-    backgroundColor: colors.bg,
-    borderTopWidth: 1.5,
-    borderColor: colors.ink,
+    backgroundColor: colors.surface,
+    borderTopWidth: 2,
+    borderColor: colors.border,
   },
   row: {
     flexDirection: 'row' as const,
@@ -62,19 +62,20 @@ const styles = themed(() => ({
     flex: 1,
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
-    gap: 4,
+    gap: 2,
   },
-  marker: {
-    position: 'absolute' as const,
-    top: -1.5,
-    width: 22,
-    height: 3,
-    backgroundColor: 'transparent',
+  pill: {
+    width: 48,
+    height: 30,
+    borderRadius: 15,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+  },
+  pillOn: {
+    backgroundColor: colors.red + '33',
   },
   label: {
     fontFamily: fonts.condensed,
-    fontWeight: '700' as const,
-    fontSize: 10.5,
-    letterSpacing: 1.1,
+    fontSize: 11,
   },
 }));

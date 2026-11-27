@@ -53,7 +53,7 @@ import { celebrationAllowed } from '../settings/animation';
 import { reportResult } from '../online/tournamentService';
 import { ChatLine, ChatSheet, UnreadDot } from '../components/play/ChatSheet';
 import { playSound } from '../services/sounds';
-import { PosterHeading } from '../components/poster';
+import { MascotHero, PosterHeading } from '../components/poster';
 import { CapturedRow, materialFromFen } from '../components/Captured';
 
 /** Se há peças capturadas por `color` ou vantagem dela (para trocar o status pelas capturas). */
@@ -70,7 +70,7 @@ interface OnlineScreenProps {
   joinRequest: { code: string; nonce: number; watch?: boolean } | null;
   prefs: AnalysisPrefs;
   onOpenMenu: () => void;
-  onAnalyze: (pgn: string, orientation: 'white' | 'black') => void;
+  onAnalyze: (pgn: string, orientation: 'white' | 'black', backLabel?: string) => void;
   /** Mesa de torneio: volta para a tela do torneio. */
   onBackToTournament?: (code: string) => void;
   /** A barra de navegação aparece só no saguão (sem sala aberta). */
@@ -256,7 +256,7 @@ export function OnlineScreen({
   const shareInvite = async () => {
     if (!code) return;
     const link = inviteLink(code);
-    const message = `Bora jogar xadrez? ♞\n${link}\n\nOu abra o Chess Analyzer → Jogar online → Entrar com o código ${code}`;
+    const message = `Bora jogar xadrez? ♞\n${link}\n\nOu abra o Noxari Chess → Jogar online → Entrar com o código ${code}`;
     try {
       const res = await Share.share({ message });
       if (res.action === Share.dismissedAction) return;
@@ -482,10 +482,7 @@ export function OnlineScreen({
       <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
         <Header title="JOGAR ONLINE" onHome={onOpenMenu} />
         <ScrollView style={styles.scroll} contentContainerStyle={styles.lobby} keyboardShouldPersistTaps="handled">
-          <View style={styles.heroPoster}>
-            <PosterHeading>{'Desafie\num amigo'}</PosterHeading>
-            <Text style={styles.heroPosterText}>Crie uma sala e mande o código. A partida acontece aqui no app, em tempo real.</Text>
-          </View>
+          <MascotHero pose="festa" tone="blue" side="left" title={'Desafie\num amigo'} text="Crie uma sala e mande o código. A partida acontece aqui no app, em tempo real." mascotHeight={120} />
 
           <View style={styles.card}>
             <Text style={styles.cardLabel}>SEU NOME</Text>
@@ -826,7 +823,7 @@ export function OnlineScreen({
           {!me ? (
             <>
               {finished && (
-                <ActionBtn icon="review" label="Analisar" onPress={() => onAnalyze(onlinePgn(game), 'white')} />
+                <ActionBtn icon="review" label="Analisar" onPress={() => onAnalyze(onlinePgn(game), 'white', 'Voltar à partida')} />
               )}
               {game.tournament && (
                 <ActionBtn
@@ -874,7 +871,7 @@ export function OnlineScreen({
               <ActionBtn
                 icon="review"
                 label="Analisar"
-                onPress={() => onAnalyze(onlinePgn(game), me === 'b' ? 'black' : 'white')}
+                onPress={() => onAnalyze(onlinePgn(game), me === 'b' ? 'black' : 'white', 'Voltar à partida')}
               />
               {game.tournament ? (
                 <ActionBtn
@@ -1134,7 +1131,6 @@ const styles = themed(() => StyleSheet.create({
   headerTitle: {
     color: colors.text,
     fontFamily: fonts.condensedHeavy,
-    fontWeight: '900',
     fontSize: 17,
     letterSpacing: 1.5,
   },
@@ -1158,6 +1154,7 @@ const styles = themed(() => StyleSheet.create({
     paddingBottom: 4,
   },
   heroPosterText: {
+    fontFamily: 'Nunito_600SemiBold',
     color: colors.textDim,
     fontSize: 13,
     fontStyle: 'italic',
@@ -1174,11 +1171,11 @@ const styles = themed(() => StyleSheet.create({
   heroTitle: {
     color: colors.text,
     fontFamily: fonts.condensedHeavy,
-    fontWeight: '900',
     fontSize: 26,
     letterSpacing: 1,
   },
   heroText: {
+    fontFamily: 'Nunito_600SemiBold',
     color: colors.textDim,
     fontSize: 13,
     textAlign: 'center',
@@ -1187,18 +1184,21 @@ const styles = themed(() => StyleSheet.create({
   },
   card: {
     backgroundColor: colors.surface,
-    borderRadius: 4,
+    borderRadius: 20,
     padding: 16,
     gap: 10,
+    borderWidth: 2,
+    borderBottomWidth: 4,
+    borderColor: colors.border,
   },
   cardLabel: {
     color: colors.textDim,
     fontFamily: fonts.condensed,
-    fontWeight: '700',
     fontSize: 12,
     letterSpacing: 1.8,
   },
   fieldLabel: {
+    fontFamily: 'Nunito_600SemiBold',
     color: colors.textMuted,
     fontSize: 12,
     marginTop: 2,
@@ -1206,29 +1206,31 @@ const styles = themed(() => StyleSheet.create({
   cardTitle: {
     color: colors.text,
     fontSize: 17,
-    fontWeight: '800',
+    fontFamily: 'Nunito_800ExtraBold',
   },
   cardText: {
+    fontFamily: 'Nunito_600SemiBold',
     color: colors.textDim,
     fontSize: 14,
   },
   cardStep: {
+    fontFamily: 'Nunito_600SemiBold',
     color: colors.text,
     fontSize: 14,
   },
   section: {
     color: colors.textDim,
     fontFamily: fonts.condensed,
-    fontWeight: '700',
     fontSize: 12,
     letterSpacing: 1.8,
     marginTop: 20,
     marginBottom: 8,
   },
   input: {
+    fontFamily: 'Nunito_600SemiBold',
     color: colors.text,
     backgroundColor: colors.bg,
-    borderRadius: 4,
+    borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 16,
@@ -1242,19 +1244,19 @@ const styles = themed(() => StyleSheet.create({
     alignItems: 'center',
     gap: 4,
     paddingVertical: 10,
-    borderRadius: 4,
+    borderRadius: 12,
     backgroundColor: colors.bg,
     borderWidth: 2,
     borderColor: 'transparent',
   },
   segmentActive: {
-    borderColor: colors.mint,
-    backgroundColor: colors.surfaceAlt,
+    borderColor: colors.red,
+    backgroundColor: colors.red + '26',
   },
   segmentText: {
     color: colors.textDim,
     fontSize: 13,
-    fontWeight: '600',
+    fontFamily: 'Nunito_600SemiBold',
   },
   segmentTextActive: {
     color: colors.text,
@@ -1271,19 +1273,23 @@ const styles = themed(() => StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 4,
     paddingVertical: 10,
-    borderRadius: 3,
-    backgroundColor: colors.bg,
+    borderRadius: 14,
+    backgroundColor: colors.surface,
+    borderWidth: 2,
+    borderBottomWidth: 4,
+    borderColor: colors.border,
   },
   chipActive: {
-    backgroundColor: colors.mint,
+    backgroundColor: colors.red + '26',
+    borderColor: colors.red,
   },
   chipText: {
     color: colors.textDim,
     fontSize: 14,
-    fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
   },
   chipTextActive: {
-    color: colors.bg,
+    color: colors.brandText,
   },
   primary: {
     flexDirection: 'row',
@@ -1291,13 +1297,15 @@ const styles = themed(() => StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
     backgroundColor: colors.red,
-    borderRadius: 4,
+    borderRadius: 16,
     paddingVertical: 14,
+    borderWidth: 2,
+    borderBottomWidth: 5,
+    borderColor: colors.redDark,
   },
   primaryText: {
     color: '#fff',
     fontFamily: fonts.condensedHeavy,
-    fontWeight: '800',
     fontSize: 15,
     letterSpacing: 1.3,
   },
@@ -1307,7 +1315,7 @@ const styles = themed(() => StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
     backgroundColor: colors.surfaceAlt,
-    borderRadius: 4,
+    borderRadius: 12,
     paddingVertical: 13,
     borderWidth: 1,
     borderColor: colors.border,
@@ -1315,7 +1323,6 @@ const styles = themed(() => StyleSheet.create({
   secondaryText: {
     color: colors.text,
     fontFamily: fonts.condensedHeavy,
-    fontWeight: '800',
     fontSize: 14,
     letterSpacing: 1.2,
   },
@@ -1328,7 +1335,7 @@ const styles = themed(() => StyleSheet.create({
     minWidth: 0,
     width: '100%',
     letterSpacing: 6,
-    fontWeight: '800',
+    fontFamily: 'Nunito_800ExtraBold',
     fontSize: 20,
     textAlign: 'center',
   },
@@ -1336,15 +1343,17 @@ const styles = themed(() => StyleSheet.create({
     width: 54,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 4,
+    borderRadius: 12,
     backgroundColor: colors.red,
   },
   error: {
-    color: colors.red,
+    fontFamily: 'Nunito_600SemiBold',
+    color: colors.danger,
     fontSize: 13,
     textAlign: 'center',
   },
   hint: {
+    fontFamily: 'Nunito_600SemiBold',
     color: colors.textMuted,
     fontSize: 12,
     marginTop: 10,
@@ -1352,6 +1361,7 @@ const styles = themed(() => StyleSheet.create({
   },
   // ----- Sala esperando -----
   waitText: {
+    fontFamily: 'Nunito_600SemiBold',
     color: colors.textDim,
     fontSize: 14,
     marginTop: 8,
@@ -1359,11 +1369,11 @@ const styles = themed(() => StyleSheet.create({
   bigCode: {
     color: colors.text,
     fontFamily: fonts.condensedHeavy,
-    fontWeight: '900',
     fontSize: 46,
     letterSpacing: 8,
   },
   linkText: {
+    fontFamily: 'Nunito_600SemiBold',
     color: colors.mint,
     fontSize: 13,
     marginTop: 4,
@@ -1374,7 +1384,7 @@ const styles = themed(() => StyleSheet.create({
     alignItems: 'center',
     gap: 4,
     backgroundColor: colors.red,
-    borderRadius: 3,
+    borderRadius: 14,
     paddingHorizontal: 6,
     paddingVertical: 2,
     marginRight: 4,
@@ -1382,10 +1392,11 @@ const styles = themed(() => StyleSheet.create({
   watchChipText: {
     color: colors.onRed,
     fontSize: 9,
-    fontWeight: '800',
+    fontFamily: 'Nunito_800ExtraBold',
     letterSpacing: 1.4,
   },
   cancelLink: {
+    fontFamily: 'Nunito_600SemiBold',
     color: colors.textDim,
     textDecorationLine: 'underline',
     fontSize: 13,
@@ -1404,21 +1415,19 @@ const styles = themed(() => StyleSheet.create({
     alignItems: 'baseline',
     gap: 6,
     backgroundColor: colors.surface,
-    borderRadius: 3,
+    borderRadius: 14,
     paddingHorizontal: 14,
     paddingVertical: 7,
   },
   roomLabel: {
     color: colors.textMuted,
     fontFamily: fonts.condensed,
-    fontWeight: '700',
     fontSize: 12,
     letterSpacing: 1.2,
   },
   roomText: {
     color: colors.text,
     fontFamily: fonts.condensedHeavy,
-    fontWeight: '900',
     fontSize: 15,
     letterSpacing: 2,
   },
@@ -1432,14 +1441,14 @@ const styles = themed(() => StyleSheet.create({
   avatar: {
     width: 36,
     height: 36,
-    borderRadius: 4,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarWhite: {
     backgroundColor: '#ece8e1',
-    borderWidth: 1.5,
-    borderColor: colors.ink,
+    borderWidth: 2,
+    borderColor: colors.border,
   },
   avatarBlack: {
     backgroundColor: '#2e2e33',
@@ -1448,7 +1457,6 @@ const styles = themed(() => StyleSheet.create({
   },
   avatarText: {
     fontFamily: fonts.condensedHeavy,
-    fontWeight: '900',
     fontSize: 18,
   },
   presence: {
@@ -1464,14 +1472,15 @@ const styles = themed(() => StyleSheet.create({
   playerName: {
     color: colors.text,
     fontSize: 15,
-    fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
   },
   playerYou: {
     color: colors.textMuted,
     fontSize: 12,
-    fontWeight: '400',
+    fontFamily: 'Nunito_600SemiBold',
   },
   playerSub: {
+    fontFamily: 'Nunito_600SemiBold',
     color: colors.textMuted,
     fontSize: 12,
     marginTop: 1,
@@ -1484,7 +1493,7 @@ const styles = themed(() => StyleSheet.create({
     justifyContent: 'flex-end',
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 4,
+    borderRadius: 12,
     backgroundColor: colors.surface,
   },
   clockActive: {
@@ -1496,7 +1505,6 @@ const styles = themed(() => StyleSheet.create({
   clockText: {
     color: colors.textDim,
     fontFamily: fonts.condensedHeavy,
-    fontWeight: '800',
     fontSize: 22,
     fontVariant: ['tabular-nums'],
   },
@@ -1516,7 +1524,7 @@ const styles = themed(() => StyleSheet.create({
     marginHorizontal: 12,
     marginBottom: 2,
     backgroundColor: colors.surface,
-    borderRadius: 4,
+    borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 7,
   },
@@ -1524,18 +1532,17 @@ const styles = themed(() => StyleSheet.create({
     flex: 1,
     color: colors.textDim,
     fontSize: 13,
-    fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
   },
   seriesScore: {
     color: colors.text,
     fontFamily: fonts.condensedHeavy,
-    fontWeight: '900',
     fontSize: 18,
   },
   banner: {
     marginHorizontal: 12,
     marginTop: 6,
-    borderRadius: 4,
+    borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 9,
     minHeight: 40,
@@ -1553,7 +1560,6 @@ const styles = themed(() => StyleSheet.create({
   bannerText: {
     color: colors.text,
     fontFamily: fonts.condensedHeavy,
-    fontWeight: '800',
     fontSize: 14,
     letterSpacing: 1.2,
   },
@@ -1565,13 +1571,12 @@ const styles = themed(() => StyleSheet.create({
   smallBtn: {
     paddingHorizontal: 10,
     paddingVertical: 6,
-    borderRadius: 4,
+    borderRadius: 12,
     backgroundColor: colors.surfaceAlt,
   },
   smallBtnText: {
     color: colors.text,
     fontFamily: fonts.condensedHeavy,
-    fontWeight: '800',
     fontSize: 12,
     letterSpacing: 1,
   },
@@ -1595,11 +1600,11 @@ const styles = themed(() => StyleSheet.create({
     alignItems: 'center',
     gap: 3,
     paddingVertical: 8,
-    borderRadius: 4,
+    borderRadius: 12,
   },
   actionText: {
     fontSize: 12,
-    fontWeight: '600',
+    fontFamily: 'Nunito_600SemiBold',
   },
   iconBtn: {
     width: 44,
@@ -1612,13 +1617,14 @@ const styles = themed(() => StyleSheet.create({
     position: 'absolute',
     alignSelf: 'center',
     backgroundColor: colors.surfaceAlt,
-    borderRadius: 3,
+    borderRadius: 14,
     paddingHorizontal: 16,
     paddingVertical: 9,
     borderWidth: 1,
     borderColor: colors.border,
   },
   toastText: {
+    fontFamily: 'Nunito_600SemiBold',
     color: colors.text,
     fontSize: 13,
   },

@@ -4,6 +4,8 @@ import { Sheet } from './Sheet';
 import { MoveBadge } from './MoveBadge';
 import { Icon, IconName } from './Icon';
 import { saveViewAsImage } from '../services/share';
+import { CoachPanel } from './CoachPanel';
+import type { CoachInput } from '../ai/coach';
 import { MOVE_KINDS, MoveKind, REPORT_ORDER } from '../utils/moveClassifier';
 import { colors, fonts, themed } from '../theme';
 
@@ -22,6 +24,9 @@ export interface GameReport {
 interface ReportSheetProps {
   visible: boolean;
   report: GameReport;
+  /** Fatos da partida para o professor (sem isso, o painel não aparece). */
+  coachInput?: CoachInput;
+  defaultStudent?: Side;
   onClose: () => void;
   onStart: () => void;
   /** Toque numa contagem: vai para os lances daquela categoria. */
@@ -33,6 +38,8 @@ interface ReportSheetProps {
 export const ReportSheet: React.FC<ReportSheetProps> = ({
   visible,
   report,
+  coachInput,
+  defaultStudent = 'w',
   onClose,
   onStart,
   onSelectKind,
@@ -146,7 +153,7 @@ export const ReportSheet: React.FC<ReportSheetProps> = ({
         ))}
 
         <Text style={styles.watermark}>
-          CHESS<Text style={{ color: colors.red }}>ANALYZER</Text> · Stockfish 19
+          Noxari <Text style={{ color: colors.brandText }}>Chess</Text> · Stockfish 19
         </Text>
         </View>
 
@@ -168,6 +175,8 @@ export const ReportSheet: React.FC<ReportSheetProps> = ({
         <Pressable onPress={onStart} style={({ pressed }) => [styles.primary, pressed && { opacity: 0.85 }]}>
           <Text style={styles.primaryText}>VER LANCES</Text>
         </Pressable>
+
+        {coachInput && <CoachPanel input={coachInput} defaultStudent={defaultStudent} pending={report.pending} />}
       </ScrollView>
     </Sheet>
   );
@@ -212,12 +221,11 @@ const styles = themed(() => StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 10,
     marginHorizontal: -10,
-    borderRadius: 4,
+    borderRadius: 12,
   },
   watermark: {
     color: colors.textMuted,
     fontFamily: fonts.condensedHeavy,
-    fontWeight: '800',
     fontSize: 11,
     letterSpacing: 1.5,
     textAlign: 'center',
@@ -235,7 +243,7 @@ const styles = themed(() => StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
     paddingVertical: 11,
-    borderRadius: 4,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.surfaceAlt,
@@ -243,11 +251,11 @@ const styles = themed(() => StyleSheet.create({
   actionText: {
     color: colors.text,
     fontFamily: fonts.condensedHeavy,
-    fontWeight: '800',
     fontSize: 13,
     letterSpacing: 1,
   },
   opening: {
+    fontFamily: 'Nunito_600SemiBold',
     color: colors.textDim,
     fontSize: 13,
     marginBottom: 10,
@@ -267,10 +275,10 @@ const styles = themed(() => StyleSheet.create({
     flex: 1.3,
     color: colors.text,
     fontSize: 15,
-    fontWeight: '600',
+    fontFamily: 'Nunito_600SemiBold',
   },
   labelStrong: {
-    fontWeight: '800',
+    fontFamily: 'Nunito_800ExtraBold',
   },
   valueCol: {
     flex: 1,
@@ -285,7 +293,7 @@ const styles = themed(() => StyleSheet.create({
   swatch: {
     width: 14,
     height: 14,
-    borderRadius: 3,
+    borderRadius: 14,
   },
   swatchWhite: {
     backgroundColor: '#ece8e1',
@@ -298,10 +306,11 @@ const styles = themed(() => StyleSheet.create({
   player: {
     color: colors.text,
     fontSize: 13,
-    fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
     maxWidth: 120,
   },
   elo: {
+    fontFamily: 'Nunito_600SemiBold',
     color: colors.textMuted,
     fontSize: 11,
   },
@@ -310,7 +319,7 @@ const styles = themed(() => StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 8,
     paddingHorizontal: 10,
-    borderRadius: 4,
+    borderRadius: 12,
   },
   boxWhite: {
     backgroundColor: '#ece8e1',
@@ -320,7 +329,6 @@ const styles = themed(() => StyleSheet.create({
   },
   boxText: {
     fontFamily: fonts.condensedHeavy,
-    fontWeight: '900',
     fontSize: 22,
   },
   boxTextWhite: {
@@ -331,7 +339,6 @@ const styles = themed(() => StyleSheet.create({
   },
   count: {
     fontFamily: fonts.condensedHeavy,
-    fontWeight: '900',
     fontSize: 20,
   },
   divider: {
@@ -340,10 +347,12 @@ const styles = themed(() => StyleSheet.create({
     marginVertical: 8,
   },
   dash: {
+    fontFamily: 'Nunito_600SemiBold',
     color: colors.textMuted,
     fontSize: 16,
   },
   note: {
+    fontFamily: 'Nunito_600SemiBold',
     color: colors.textMuted,
     fontSize: 11,
     marginTop: 10,
@@ -352,13 +361,15 @@ const styles = themed(() => StyleSheet.create({
     marginTop: 14,
     alignItems: 'center',
     backgroundColor: colors.red,
-    borderRadius: 4,
+    borderRadius: 16,
     paddingVertical: 14,
+    borderWidth: 2,
+    borderBottomWidth: 5,
+    borderColor: colors.redDark,
   },
   primaryText: {
     color: '#fff',
     fontFamily: fonts.condensedHeavy,
-    fontWeight: '800',
     fontSize: 16,
     letterSpacing: 1.5,
   },

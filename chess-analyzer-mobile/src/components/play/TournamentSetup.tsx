@@ -149,7 +149,7 @@ export function TournamentSetup({
                 accessibilityLabel={`Remover ${b.name}`}
                 style={styles.step}
               >
-                <Icon name="close" size={16} color={colors.red} />
+                <Icon name="close" size={16} color={colors.danger} />
               </Pressable>
             </View>
           ))}
@@ -189,9 +189,10 @@ const styles = themed(() => ({
   youTitle: {
     color: colors.text,
     fontSize: 15,
-    fontWeight: '600' as const,
+    fontFamily: 'Nunito_600SemiBold',
   },
   youHint: {
+    fontFamily: 'Nunito_600SemiBold',
     color: colors.textMuted,
     fontSize: 12,
     marginTop: 2,
@@ -201,23 +202,23 @@ const styles = themed(() => ({
     alignItems: 'center' as const,
     gap: 8,
     backgroundColor: colors.bg,
-    borderRadius: 4,
+    borderRadius: 12,
     paddingHorizontal: 10,
     paddingVertical: 8,
   },
   botName: {
     color: colors.text,
     fontSize: 14,
-    fontWeight: '700' as const,
+    fontFamily: 'Nunito_700Bold',
   },
   botLevel: {
+    fontFamily: 'Nunito_600SemiBold',
     color: colors.textMuted,
     fontSize: 11,
   },
   botRating: {
     color: colors.text,
     fontFamily: fonts.condensedHeavy,
-    fontWeight: '900' as const,
     fontSize: 16,
     minWidth: 42,
     textAlign: 'center' as const,
@@ -225,7 +226,7 @@ const styles = themed(() => ({
   step: {
     width: 30,
     height: 30,
-    borderRadius: 4,
+    borderRadius: 12,
     backgroundColor: colors.surfaceAlt,
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
@@ -239,23 +240,23 @@ const styles = themed(() => ({
     borderWidth: 1,
     borderColor: colors.mint,
     borderStyle: 'dashed' as const,
-    borderRadius: 4,
+    borderRadius: 12,
     paddingVertical: 10,
   },
   addText: {
     color: colors.mint,
-    fontWeight: '700' as const,
+    fontFamily: 'Nunito_700Bold',
     fontSize: 13,
   },
   quick: {
     paddingHorizontal: 12,
     justifyContent: 'center' as const,
-    borderRadius: 4,
+    borderRadius: 12,
     backgroundColor: colors.bg,
   },
   quickText: {
     color: colors.textDim,
-    fontWeight: '700' as const,
+    fontFamily: 'Nunito_700Bold',
     fontSize: 12,
   },
 }));

@@ -1,10 +1,14 @@
 import { Platform } from 'react-native';
 
 /**
- * Identidade visual "cartaz": papel creme, tinta preta e vermelho de impressão, tipografia condensada
- * alta (veja BRAND.md). `mint` é a cor de destaque (a tinta); o nome ficou para não mexer no app todo:
- * onde há fundo `mint` o texto usa `bg`, e vice-versa. `ink`/`paper` são o par "traço forte"/"contraste
- * do traço" e se invertem no tema escuro; `onRed` é o texto sobre o vermelho nos dois temas.
+ * Identidade NOXARI CHESS ("Playful Chess Identity"): creme confortável, verde como cor de reconhecimento,
+ * grafite para o texto, amarelo/azul/laranja como apoio (veja BRAND.md).
+ *
+ * Os nomes antigos dos tokens ficaram para não mexer no app todo:
+ * - `red` = cor de AÇÃO da marca (verde Noxari); `redDark` = a "sombra" 3D dos botões verdes.
+ * - `mint`/`ink` = traço forte (grafite no claro, creme no escuro); `paper` = contraste do traço.
+ * - `onRed` = texto sobre o verde. `brandText` = verde legível como TEXTO sobre o fundo.
+ * - `danger` = erro de verdade (download falhou, derrota) — não confundir com a cor da marca.
  */
 export type Palette = {
   bg: string;
@@ -21,41 +25,74 @@ export type Palette = {
   paper: string;
   ink: string;
   onRed: string;
+  brandText: string;
+  forest: string;
+  yellow: string;
+  yellowDark: string;
+  blue: string;
+  blueDark: string;
+  orange: string;
+  orangeDark: string;
+  brown: string;
+  danger: string;
+  shadow: string;
 };
 
 export const LIGHT: Palette = {
-  bg: '#ece6da', // Papel
-  surface: '#e2dbcc',
-  surfaceAlt: '#d7cfbe',
-  border: '#c4baa7',
-  red: '#d7261e', // Vermelho de impressão
-  redDark: '#8f1712',
-  mint: '#141414', // destaque = tinta
-  mintDark: '#d7261e', // trilho dos interruptores ligados
-  text: '#141414', // Tinta
-  textDim: '#57524a',
-  textMuted: '#666058', // ≥ 4,5:1 sobre o papel
-  paper: '#ece6da',
-  ink: '#141414',
-  onRed: '#f6f1e7',
+  bg: '#FFF5DF', // Creme
+  surface: '#FFFBF1', // card
+  surfaceAlt: '#F6E8C8', // card "afundado" / chips
+  border: '#EBDAB4',
+  red: '#58CC65', // Verde principal (ação)
+  redDark: '#3E9E4C', // borda 3D dos botões verdes
+  mint: '#303A35', // Grafite
+  mintDark: '#58CC65', // trilho dos interruptores ligados
+  text: '#303A35',
+  textDim: '#56615B',
+  textMuted: '#6A736D', // ≥ 4,5:1 sobre o creme
+  paper: '#FFF5DF',
+  ink: '#303A35',
+  onRed: '#FFFFFF',
+  brandText: '#287D42', // Verde escuro (texto)
+  forest: '#254235', // verde-floresta da capa da mascote
+  yellow: '#FFC83D',
+  yellowDark: '#D69A12',
+  blue: '#42B9E8',
+  blueDark: '#2389B3',
+  orange: '#FF994D',
+  orangeDark: '#D9702A',
+  brown: '#A96943',
+  danger: '#E0453A',
+  shadow: '#C9B68C',
 };
 
-/** Tema escuro: o "negativo" do cartaz — fundo quase preto puxado para o marrom, tinta creme. */
+/** Escuro: a "noite na floresta" — verde-floresta profundo, texto creme, o mesmo verde de ação. */
 export const DARK: Palette = {
-  bg: '#151413',
-  surface: '#1e1c1a',
-  surfaceAlt: '#292623',
-  border: '#3b3732',
-  red: '#e2392e', // um pouco mais claro para manter o contraste no escuro
-  redDark: '#a3221a',
-  mint: '#ece6da',
-  mintDark: '#e2392e',
-  text: '#ece6da',
-  textDim: '#aba294',
-  textMuted: '#938c81', // ≥ 4,5:1 sobre o fundo escuro
-  paper: '#151413',
-  ink: '#ece6da',
-  onRed: '#f6f1e7',
+  bg: '#16211B',
+  surface: '#1E2C24',
+  surfaceAlt: '#27382E',
+  border: '#33493C',
+  red: '#58CC65',
+  redDark: '#2F7F3C',
+  mint: '#FFF5DF',
+  mintDark: '#58CC65',
+  text: '#FFF5DF',
+  textDim: '#CFC6AE',
+  textMuted: '#A9A28E',
+  paper: '#16211B',
+  ink: '#FFF5DF',
+  onRed: '#FFFFFF',
+  brandText: '#7FDC8A',
+  forest: '#0F1A14',
+  yellow: '#FFC83D',
+  yellowDark: '#B88310',
+  blue: '#42B9E8',
+  blueDark: '#1F7499',
+  orange: '#FF994D',
+  orangeDark: '#BF5F1F',
+  brown: '#C98A5F',
+  danger: '#FF6B5E',
+  shadow: '#0A120E',
 };
 
 export type ThemeMode = 'light' | 'dark' | 'system';
@@ -107,18 +144,32 @@ if (Platform.OS === 'web' && typeof window !== 'undefined' && /tema=escuro/.test
   applyPalette(true);
 }
 
-/** Fonte condensada nativa de cada plataforma (sem dependências extras). */
+/**
+ * Tipografia Noxari: Nunito (arredondada, amigável) — uma família só, hierarquia pelo peso.
+ * As fontes são carregadas em App.tsx (useFonts). `condensed`/`condensedHeavy` são os nomes antigos
+ * dos títulos; hoje apontam para Nunito ExtraBold/Black.
+ */
+export const FONT_FILES = {
+  regular: 'Nunito_600SemiBold',
+  bold: 'Nunito_700Bold',
+  extra: 'Nunito_800ExtraBold',
+  black: 'Nunito_900Black',
+};
+
+/** Família da Nunito para um peso (no Android o peso vem da família, não do fontWeight). */
+export function fontFor(weight?: string | number) {
+  const w = weight === 'bold' ? 700 : Number(weight) || 600;
+  if (w >= 900) return FONT_FILES.black;
+  if (w >= 800) return FONT_FILES.extra;
+  if (w >= 700) return FONT_FILES.bold;
+  return FONT_FILES.regular;
+}
+
 export const fonts = {
-  condensed: Platform.select({
-    android: 'sans-serif-condensed',
-    ios: 'AvenirNextCondensed-Bold',
-    default: '"Oswald", "Bebas Neue", "Arial Narrow", Impact, sans-serif',
-  }) as string,
-  condensedHeavy: Platform.select({
-    android: 'sans-serif-condensed',
-    ios: 'AvenirNextCondensed-Heavy',
-    default: '"Oswald", "Bebas Neue", "Arial Narrow", Impact, sans-serif',
-  }) as string,
+  condensed: FONT_FILES.extra,
+  condensedHeavy: FONT_FILES.black,
+  body: FONT_FILES.regular,
+  bold: FONT_FILES.bold,
 };
 
 export interface BoardTheme {
@@ -134,6 +185,17 @@ export interface BoardTheme {
 }
 
 export const BOARD_THEMES: BoardTheme[] = [
+  {
+    name: 'Noxari',
+    light: '#F4EFD9',
+    dark: '#9DBF83',
+    lastMove: 'rgba(255, 200, 61, 0.55)',
+    selected: 'rgba(255, 200, 61, 0.7)',
+    hint: 'rgba(37, 66, 53, 0.28)',
+    bestArrow: '#58CC65',
+    secondArrow: '#42B9E8',
+    frame: '#254235',
+  },
   {
     name: 'Verde',
     light: '#ebecd0',
@@ -214,4 +276,4 @@ export const BOARD_THEMES: BoardTheme[] = [
 ];
 
 /** Tema padrão para quem instala agora (o salvo nas configurações continua valendo). */
-export const DEFAULT_THEME_IDX = 6;
+export const DEFAULT_THEME_IDX = 0;

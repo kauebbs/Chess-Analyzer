@@ -822,11 +822,6 @@ const styles = StyleSheet.create({
     borderWidth: 0,
     borderRadius: 0,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOpacity: 0.6,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 10,
   },
   noTouch: {
     pointerEvents: 'none',
@@ -849,7 +844,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     userSelect: 'none', // evita selecionar o texto ao arrastar com o mouse (web)
     fontFamily: fonts.condensed,
-    fontWeight: '700',
   },
   coordRank: {
     top: 1,

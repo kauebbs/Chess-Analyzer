@@ -1,11 +1,9 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { SvgXml } from 'react-native-svg';
-import { Icon } from '../components/Icon';
-import { themeSvg, Wordmark } from '../components/Logo';
-import { Cross } from '../components/poster';
-import { HERO_RATIO, HERO_SVG } from '../brand/brandSvgs';
+import { LogoMark, Wordmark } from '../components/Logo';
+import { Mascot } from '../components/Mascot';
+import { PosterButton } from '../components/poster';
 import { colors, fonts, themed } from '../theme';
 
 export type MenuAction =
@@ -29,41 +27,34 @@ interface MainMenuProps {
   current: { title: string; subtitle: string } | null;
 }
 
-/** Menu inicial em estilo cartaz: só a arte e dois botões. */
+/** Início: a Nox apresenta a marca e dois caminhos — jogar ou analisar. */
 export const MainMenu: React.FC<MainMenuProps> = ({ onAction }) => {
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const pageWidth = Math.min(width, 520);
+  const artH = Math.min((pageWidth - 46) / 1.1628, height * 0.36);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.page}>
-        <View style={styles.marks}>
-          <Cross />
-          <Wordmark height={20} />
-          <Cross />
+        <View style={styles.top}>
+          <LogoMark size={34} />
+          <Wordmark height={18} />
         </View>
 
-        <View style={styles.heroWrap}>
-          <SvgXml xml={themeSvg(HERO_SVG)} width={pageWidth} height={pageWidth * HERO_RATIO} />
+        <View style={styles.stage}>
+          <View style={styles.heroFrame}>
+            <Mascot pose="hero" height={artH} radius={28} />
+          </View>
+        </View>
+
+        <View style={styles.copy}>
+          <Text style={styles.title}>Pronto para a próxima partida?</Text>
+          <Text style={styles.text}>Jogue contra bots com personalidade ou entenda cada lance das suas partidas.</Text>
         </View>
 
         <View style={styles.actions}>
-          <Pressable
-            onPress={() => onAction('play')}
-            accessibilityLabel="Jogar"
-            style={({ pressed }) => [styles.btn, styles.btnMain, pressed && { opacity: 0.8 }]}
-          >
-            <Text style={[styles.btnText, { color: colors.onRed }]}>JOGAR</Text>
-            <Icon name="next" size={20} color={colors.onRed} strokeWidth={1.8} />
-          </Pressable>
-          <Pressable
-            onPress={() => onAction('analyze')}
-            accessibilityLabel="Analisar"
-            style={({ pressed }) => [styles.btn, styles.btnAlt, pressed && { backgroundColor: colors.surface }]}
-          >
-            <Text style={[styles.btnText, { color: colors.ink }]}>ANALISAR</Text>
-            <Icon name="next" size={20} color={colors.ink} strokeWidth={1.8} />
-          </Pressable>
+          <PosterButton label="Jogar" icon="play" onPress={() => onAction('play')} />
+          <PosterButton label="Analisar" icon="search" variant="outline" onPress={() => onAction('analyze')} />
         </View>
       </View>
     </SafeAreaView>
@@ -81,41 +72,48 @@ const styles = themed(() => StyleSheet.create({
     maxWidth: 520,
     alignSelf: 'center',
   },
-  marks: {
+  top: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 18,
-    paddingTop: 12,
+    gap: 10,
+    paddingHorizontal: 20,
+    paddingTop: 10,
   },
-  heroWrap: {
+  stage: {
     flex: 1,
+    alignItems: 'center',
     justifyContent: 'center',
+    paddingHorizontal: 20,
+  },
+  heroFrame: {
+    borderRadius: 32,
+    borderWidth: 3,
+    borderBottomWidth: 6,
+    borderColor: colors.red,
+    overflow: 'hidden',
+  },
+  copy: {
+    paddingHorizontal: 24,
+    paddingTop: 18,
+    gap: 6,
+  },
+  title: {
+    color: colors.text,
+    fontFamily: fonts.condensedHeavy,
+    fontSize: 26,
+    lineHeight: 30,
+    letterSpacing: -0.3,
+  },
+  text: {
+    color: colors.textDim,
+    fontFamily: fonts.body,
+    fontSize: 15,
+    lineHeight: 21,
   },
   actions: {
-    paddingHorizontal: 18,
+    paddingHorizontal: 20,
+    paddingTop: 18,
     paddingBottom: 22,
-    gap: 10,
-  },
-  btn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderRadius: 3,
-    paddingVertical: 15,
-    paddingHorizontal: 18,
-  },
-  btnMain: {
-    backgroundColor: colors.red,
-  },
-  btnAlt: {
-    borderWidth: 1.5,
-    borderColor: colors.ink,
-  },
-  btnText: {
-    fontFamily: fonts.condensedHeavy,
-    fontWeight: '900',
-    fontSize: 18,
-    letterSpacing: 2,
+    gap: 12,
   },
 }));

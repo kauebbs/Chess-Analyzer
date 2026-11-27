@@ -1,43 +1,42 @@
 import React from 'react';
-import { View } from 'react-native';
-import { SvgXml } from 'react-native-svg';
-import { BARCODE_SVG, MARK_SVG, WORDMARK_RATIO, WORDMARK_SVG } from '../brand/brandSvgs';
-import { colors } from '../theme';
+import { Image, Text, View } from 'react-native';
+import { colors, fonts } from '../theme';
 
 /**
- * Os SVGs da marca são desenhados com as cores do tema claro; aqui elas viram as do tema atual
- * (no escuro: tinta creme, papel escuro, vermelho um pouco mais vivo).
- */
-export function themeSvg(svg: string): string {
-  // Uma passada só: trocar uma cor de cada vez faria a tinta (já trocada para creme) virar papel de novo
-  const map: Record<string, string> = { '#141414': colors.ink, '#ece6da': colors.bg, '#d7261e': colors.red };
-  return svg.replace(/#141414|#ece6da|#d7261e/gi, (c) => map[c.toLowerCase()] ?? c);
-}
-
-/**
- * Marca do Chess Analyzer no estilo cartaz: papel creme, círculo vermelho e o cavalo em silhueta.
- * Fontes em assets/brand (veja BRAND.md).
+ * Marca NOXARI CHESS. Símbolo: a capivara Nox no quadrado verde-floresta (o mesmo do ícone do app).
+ * Letreiro: "Noxari" em Nunito Black + "CHESS" pequeno e espaçado, como complemento.
  */
 export function LogoMark({ size = 48 }: { size?: number }) {
-  return <SvgXml xml={themeSvg(MARK_SVG)} width={size} height={size} />;
-}
-
-/** Letreiro "CHESS ANALYZER" (vermelho + tinta, condensado alto). */
-export function Wordmark({ height = 24 }: { height?: number }) {
-  return <SvgXml xml={themeSvg(WORDMARK_SVG)} width={height * WORDMARK_RATIO} height={height} />;
-}
-
-/** Marca + letreiro lado a lado. */
-export function Lockup({ height = 30 }: { height?: number }) {
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: height * 0.3 }}>
-      <LogoMark size={height} />
-      <Wordmark height={height * 0.62} />
+    <Image
+      source={require('../../assets/icon.png')}
+      style={{ width: size, height: size, borderRadius: size * 0.26 }}
+      accessibilityLabel="Noxari Chess"
+    />
+  );
+}
+
+/** Letreiro "Noxari CHESS". `height` é a altura da palavra Noxari. */
+export function Wordmark({ height = 24, color }: { height?: number; color?: string }) {
+  const c = color ?? colors.brandText;
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: height * 0.28 }} accessibilityLabel="Noxari Chess">
+      <Text style={{ fontFamily: fonts.condensedHeavy, fontSize: height * 1.25, lineHeight: height * 1.4, color: c, letterSpacing: -0.5 }}>
+        Noxari
+      </Text>
+      <Text style={{ fontFamily: fonts.condensedHeavy, fontSize: height * 0.48, color: c, letterSpacing: height * 0.12, opacity: 0.75 }}>
+        CHESS
+      </Text>
     </View>
   );
 }
 
-/** Código de barras decorativo (detalhe dos cartazes). */
-export function Barcode({ width = 120 }: { width?: number }) {
-  return <SvgXml xml={themeSvg(BARCODE_SVG)} width={width} height={width / 6} />;
+/** Símbolo + letreiro lado a lado. */
+export function Lockup({ height = 30 }: { height?: number }) {
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: height * 0.32 }}>
+      <LogoMark size={height} />
+      <Wordmark height={height * 0.6} />
+    </View>
+  );
 }

@@ -351,8 +351,8 @@ function Checkmate({
 }
 
 // ---------- Vitória / empate: cartão central + confete ----------
-/** Confete nas cores do pôster (lido na hora, para seguir o tema claro/escuro). */
-const confettiColors = () => [colors.red, colors.ink, colors.red, colors.textDim, '#f2c230', colors.redDark];
+/** Confete nas cores Noxari (lido na hora, para seguir o tema claro/escuro). */
+const confettiColors = () => [colors.red, colors.yellow, colors.blue, colors.orange, colors.redDark, colors.brown];
 
 function Victory({
   size,
@@ -420,9 +420,6 @@ function Victory({
             },
           ]}
         >
-          {/* Marcas de registro, como nos cartazes */}
-          <Text style={[styles.cross, { left: 8 }]} allowFontScaling={false}>+</Text>
-          <Text style={[styles.cross, { right: 8 }]} allowFontScaling={false}>+</Text>
 
           {/* Disco com o rei do vencedor (ou os dois reis no empate) */}
           <View
@@ -491,7 +488,7 @@ function Victory({
               top: -20,
               width: c.w,
               height: c.h,
-              borderRadius: 2,
+              borderRadius: 8,
               backgroundColor: c.color,
               opacity: t.interpolate({ inputRange: [0, 0.01, 0.85, 1], outputRange: [0, 1, 1, 0] }),
               transform: [
@@ -547,7 +544,7 @@ const styles = themed(() => StyleSheet.create({
     justifyContent: 'center',
   },
   brillGlyph: {
-    fontWeight: '900',
+    fontFamily: 'Nunito_900Black',
     includeFontPadding: false,
     letterSpacing: -0.5,
   },
@@ -555,7 +552,6 @@ const styles = themed(() => StyleSheet.create({
     flex: 1,
     color: '#fff',
     fontFamily: fonts.condensedHeavy,
-    fontWeight: '900',
     letterSpacing: 1.6,
     paddingLeft: 1.6, // compensa o espaço que o letterSpacing deixa depois da última letra
     textAlign: 'center',
@@ -571,7 +567,6 @@ const styles = themed(() => StyleSheet.create({
   mateKicker: {
     color: 'rgba(255,255,255,0.85)',
     fontFamily: fonts.condensed,
-    fontWeight: '800',
     letterSpacing: 4,
     paddingLeft: 4,
     marginBottom: 1,
@@ -580,7 +575,6 @@ const styles = themed(() => StyleSheet.create({
   mateText: {
     color: '#fff',
     fontFamily: fonts.condensedHeavy,
-    fontWeight: '900',
     letterSpacing: 3,
     paddingLeft: 3,
     textAlign: 'center',
@@ -591,31 +585,31 @@ const styles = themed(() => StyleSheet.create({
   },
   card: {
     alignItems: 'center',
-    backgroundColor: colors.bg,
-    borderRadius: 4,
-    borderWidth: 1.5,
-    borderColor: colors.ink,
+    backgroundColor: colors.surface,
+    borderRadius: 24,
+    borderWidth: 2,
+    borderBottomWidth: 5,
+    borderColor: colors.border,
     paddingHorizontal: 20,
     paddingBottom: 18,
   },
   cross: {
     position: 'absolute',
     top: 4,
-    color: colors.red,
+    color: colors.brandText,
     fontSize: 18,
-    fontWeight: '300',
+    fontFamily: 'Nunito_600SemiBold',
     includeFontPadding: false,
   },
   disc: {
     position: 'absolute',
-    borderWidth: 1.5,
-    borderColor: colors.ink,
+    borderWidth: 2,
+    borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
   kicker: {
     fontFamily: fonts.condensed,
-    fontWeight: '800',
     fontSize: 11,
     letterSpacing: 2.6,
     paddingLeft: 2.6,
@@ -625,7 +619,6 @@ const styles = themed(() => StyleSheet.create({
     alignSelf: 'stretch',
     color: colors.ink,
     fontFamily: fonts.condensedHeavy,
-    fontWeight: '900',
     letterSpacing: 1,
     paddingLeft: 1,
     textAlign: 'center',
@@ -639,6 +632,7 @@ const styles = themed(() => StyleSheet.create({
     marginBottom: 10,
   },
   resultText: {
+    fontFamily: 'Nunito_600SemiBold',
     color: colors.textDim,
     fontStyle: 'italic',
     fontSize: 14,

@@ -1,0 +1,64 @@
+@echo off
+title IA local do Chess Analyzer (Ollama)
+echo.
+echo  ==== IA local do Chess Analyzer ====
+echo.
+where ollama >nul 2>nul
+if errorlevel 1 (
+  echo  O Ollama nao esta instalado.
+  echo  Vou abrir a pagina de download. Instale e rode este arquivo de novo.
+  start https://ollama.com/download
+  pause
+  exit /b
+)
+
+set MODELO=qwen2.5:3b
+if not "%~1"=="" set MODELO=%~1
+
+echo  [1/4] Baixando o modelo %MODELO% (cerca de 2 GB, so na primeira vez)...
+ollama pull %MODELO%
+if errorlevel 1 (
+  echo  Nao consegui baixar o modelo. Confira a internet e se o Ollama esta aberto.
+  pause
+  exit /b
+)
+
+echo  [2/4] Liberando o Ollama para o celular na mesma rede Wi-Fi...
+setx OLLAMA_HOST 0.0.0.0 >nul
+set OLLAMA_HOST=0.0.0.0
+taskkill /IM "ollama app.exe" /F >nul 2>nul
+taskkill /IM ollama.exe /F >nul 2>nul
+timeout /t 2 /nobreak >nul
+if exist "%LOCALAPPDATA%\Programs\Ollama\ollama app.exe" (
+  start "" "%LOCALAPPDATA%\Programs\Ollama\ollama app.exe"
+) else (
+  start "Ollama" /MIN ollama serve
+)
+timeout /t 4 /nobreak >nul
+
+echo  [3/4] Liberando a porta 11434 no Firewall (rede privada)...
+netsh advfirewall firewall show rule name="Ollama Chess Analyzer" >nul 2>nul
+if errorlevel 1 (
+  netsh advfirewall firewall add rule name="Ollama Chess Analyzer" dir=in action=allow protocol=TCP localport=11434 profile=private >nul 2>nul
+  if errorlevel 1 (
+    echo     Sem permissao para mexer no Firewall. Clique com o botao direito neste
+    echo     arquivo e escolha "Executar como administrador", ou aceite o aviso do
+    echo     Windows quando o Ollama pedir acesso a rede.
+  ) else (
+    echo     Pronto.
+  )
+) else (
+  echo     Ja estava liberada.
+)
+
+echo  [4/4] Teste rapido:
+curl -s http://localhost:11434/api/tags >nul 2>nul && echo     Ollama respondendo. || echo     O Ollama ainda nao respondeu. Espere uns segundos e abra o app.
+echo.
+echo  ==== No app: Ajustes ^> IA ^> "IP do PC" ====
+echo  Digite um destes enderecos (o da sua rede Wi-Fi):
+ipconfig | findstr /C:"IPv4"
+echo.
+echo  Modelo: %MODELO%
+echo  Dica: se a sua rede Wi-Fi estiver como "Publica" no Windows, mude para "Privada".
+echo.
+pause

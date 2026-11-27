@@ -23,7 +23,7 @@ export function AboutSection() {
 
       <Kicker n="01">Sobre nós</Kicker>
       <Text style={styles.lead}>
-        O Chess Analyzer nasceu de um jogador querendo entender as próprias partidas sem depender de assinatura.
+        O Noxari Chess nasceu de um jogador querendo entender as próprias partidas sem depender de assinatura.
       </Text>
       <Text style={styles.body}>
         Aqui você analisa partidas do Chess.com, do Lichess ou de qualquer PGN com o Stockfish rodando no seu
@@ -120,6 +120,7 @@ const styles = themed(() => StyleSheet.create({
     paddingVertical: 8,
   },
   version: {
+    fontFamily: 'Nunito_600SemiBold',
     color: colors.textDim,
     fontStyle: 'italic',
     fontSize: 13,
@@ -131,31 +132,29 @@ const styles = themed(() => StyleSheet.create({
     marginTop: 22,
     marginBottom: 10,
     paddingBottom: 6,
-    borderBottomWidth: 1.5,
-    borderColor: colors.ink,
+    borderBottomWidth: 2,
+    borderColor: colors.border,
   },
   kickerNum: {
-    color: colors.red,
+    color: colors.brandText,
     fontFamily: fonts.condensed,
-    fontWeight: '800',
     fontSize: 13,
   },
   kickerText: {
     color: colors.ink,
     fontFamily: fonts.condensed,
-    fontWeight: '800',
     fontSize: 13,
     letterSpacing: 2,
   },
   lead: {
     color: colors.text,
     fontFamily: fonts.condensedHeavy,
-    fontWeight: '900',
     fontSize: 20,
     lineHeight: 24,
     marginBottom: 10,
   },
   body: {
+    fontFamily: 'Nunito_600SemiBold',
     color: colors.textDim,
     fontSize: 14,
     lineHeight: 21,
@@ -176,10 +175,11 @@ const styles = themed(() => StyleSheet.create({
   },
   principleTitle: {
     color: colors.text,
-    fontWeight: '800',
+    fontFamily: 'Nunito_800ExtraBold',
     fontSize: 14,
   },
   principleText: {
+    fontFamily: 'Nunito_600SemiBold',
     color: colors.textDim,
     fontSize: 13,
     lineHeight: 19,
@@ -192,10 +192,11 @@ const styles = themed(() => StyleSheet.create({
   },
   creditName: {
     color: colors.text,
-    fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
     fontSize: 13,
   },
   creditDetail: {
+    fontFamily: 'Nunito_600SemiBold',
     color: colors.textDim,
     fontSize: 12,
     marginTop: 1,
@@ -212,19 +213,19 @@ const styles = themed(() => StyleSheet.create({
     justifyContent: 'center',
     gap: 6,
     minHeight: 48,
-    borderWidth: 1.5,
-    borderColor: colors.ink,
-    borderRadius: 4,
+    borderWidth: 2,
+    borderColor: colors.border,
+    borderRadius: 12,
     paddingHorizontal: 8,
   },
   linkText: {
     color: colors.ink,
     fontFamily: fonts.condensed,
-    fontWeight: '800',
     fontSize: 12,
     letterSpacing: 1.4,
   },
   footer: {
+    fontFamily: 'Nunito_600SemiBold',
     color: colors.textMuted,
     textAlign: 'center',
     fontStyle: 'italic',

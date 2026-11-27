@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Chess Analyzer",
+    "name": "Noxari Chess",
     "slug": "chess-analyzer-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -12,7 +12,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#ece6da",
+        "backgroundColor": "#254235",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
@@ -25,9 +25,11 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-asset"
+      "expo-asset",
+      "expo-sharing",
+      "llama.rn"
     ],
-    "backgroundColor": "#ece6da",
+    "backgroundColor": "#FFF5DF",
     "extra": {
       "eas": {
         "projectId": "fb37fd67-c067-463f-b007-5604c957da8d"
@@ -37,7 +39,7 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ece6da"
+      "backgroundColor": "#FFF5DF"
     }
   }
 }

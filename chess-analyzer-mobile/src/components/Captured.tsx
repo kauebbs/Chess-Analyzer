@@ -91,7 +91,7 @@ const styles = themed(() => StyleSheet.create({
   },
   lead: {
     color: colors.textDim,
-    fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
     marginLeft: 2,
   },
 }));

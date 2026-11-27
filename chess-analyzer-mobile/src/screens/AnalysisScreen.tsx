@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Chess } from 'chess.js';
@@ -9,12 +9,16 @@ import { MoveList } from '../components/MoveList';
 import { ImportModal, Tab as ImportTab } from '../components/ImportModal';
 import { MoveBadge } from '../components/MoveBadge';
 import { GameReport, ReportSheet } from '../components/ReportSheet';
+import { CoachInput, evalText, KeyMoment } from '../ai/coach';
+import { CoachBubble } from '../components/CoachBubble';
+import { CoachAvatar } from '../components/CoachAvatar';
+import { explainMove, lineSan } from '../utils/moveExplainer';
+import { useAiConfig } from '../ai/config';
 import { AnalysisModeSheet } from '../components/AnalysisModeSheet';
 import { Celebration, CelebrationEvent } from '../components/Celebration';
 import { EngineStatus, StockfishBridge, StockfishHandle } from '../engine/StockfishBridge';
 import { LIVE_DEPTH, REVIEW_PRESETS, ReviewMode } from '../engine/presets';
 import {
-  classifyGame,
   estimateRating,
   EvalData,
   capsWinPercent,
@@ -28,6 +32,7 @@ import {
   terminalEval,
 } from '../utils/moveClassifier';
 import { openingNameAt } from '../utils/openings';
+import { createGameClassifier } from '../utils/incrementalClassify';
 import { povDiff } from '../utils/winningChances';
 import { parsePgn } from '../services/gameSources';
 import { buildPgn } from '../services/pgnExport';
@@ -42,6 +47,12 @@ import type { SoundPrefs } from '../services/sounds';
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 const MIN_CLASSIFY_DEPTH = 8; // profundidade mínima das duas avaliações para classificar um lance
 const STORE_LIVE_DEPTH = 10; // a análise ao vivo passa a valer para a classificação a partir daqui
+/** A análise ao vivo chega linha a linha (3 linhas do MultiPV por profundidade): a tela atualiza no máximo a cada 120 ms. */
+const LIVE_UI_INTERVAL_MS = 120;
+/** Resultados da revisão são juntados e aplicados no máximo a cada 400 ms (cada aplicação reclassifica a partida). */
+const REVIEW_FLUSH_MS = 400;
+/** O motor (WebView + WASM de 1,8 MB) é preparado alguns segundos depois da abertura, ou na hora ao abrir a análise. */
+const ENGINE_WARMUP_MS = 3000;
 
 interface Ply {
   san: string;
@@ -82,6 +93,9 @@ interface AnalysisScreenProps {
   onOpenMenu: () => void;
   onOpenSettings: () => void;
   onSummaryChange: (summary: AnalysisSummary | null) => void;
+  /** Análise aberta de um jogo/torneio: rótulo do botão de volta (ex.: "Voltar ao torneio"). */
+  returnLabel?: string | null;
+  onReturn?: () => void;
 }
 
 const positionsOf = (startFen: string, plies: Ply[]) => [startFen, ...plies.map((p) => p.after)];
@@ -102,6 +116,8 @@ export function AnalysisScreen({
   onOpenMenu,
   onOpenSettings,
   onSummaryChange,
+  returnLabel = null,
+  onReturn,
 }: AnalysisScreenProps) {
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
@@ -156,21 +172,34 @@ export function AnalysisScreen({
   }, []);
 
   // ---------- Avaliações e classificações ----------
-  const makeEvalAt = (pos: string[]) => {
-    const final = terminalEval(new Chess(pos[pos.length - 1]));
-    return (i: number): EvalData | null => (i === pos.length - 1 && final ? final : evals[pos[i]] ?? null);
-  };
+  // Classificar, calcular a precisão e montar o relatório percorre a partida inteira com o chess.js
+  // (numa partida de 80 lances são 160 posições). Isso usa uma cópia "atrasada" das avaliações
+  // (useDeferredValue): passar os lances e a barra de avaliação respondem na hora e o recálculo
+  // vem logo depois, sem segurar o toque.
+  const statsEvals = useDeferredValue(evals);
   const lineFinal = useMemo(() => terminalEval(new Chess(positions[positions.length - 1])), [positions]);
-  const evalAt = useMemo(() => makeEvalAt(positions), [positions, evals]); // eslint-disable-line react-hooks/exhaustive-deps
-  const mainEvalAt = useMemo(() => makeEvalAt(mainPositions), [mainPositions, evals]); // eslint-disable-line react-hooks/exhaustive-deps
+  const mainFinal = useMemo(() => terminalEval(new Chess(mainPositions[mainPositions.length - 1])), [mainPositions]);
+  const makeEvalAt = (pos: string[], final: EvalData | null, source: Record<string, EvalData>) =>
+    (i: number): EvalData | null => (i === pos.length - 1 && final ? final : source[pos[i]] ?? null);
+  // Avaliação atual (barra, setas, professor): sempre a mais nova
+  const evalAt = useMemo(() => makeEvalAt(positions, lineFinal, evals), [positions, lineFinal, evals]);
+  // Estatísticas da partida (classificação, precisão, relatório): versão atrasada
+  const statsEvalAt = useMemo(() => makeEvalAt(positions, lineFinal, statsEvals), [positions, lineFinal, statsEvals]);
+  const mainEvalAt = useMemo(
+    () => makeEvalAt(mainPositions, mainFinal, statsEvals),
+    [mainPositions, mainFinal, statsEvals]
+  );
 
+  // Classificação incremental: cada avaliação nova refaz só os lances vizinhos (mesmo resultado de antes)
+  const classifyLine = useMemo(createGameClassifier, []);
+  const classifyMain = useMemo(createGameClassifier, []);
   const classifications = useMemo(
-    () => classifyGame(positions, line, evalAt, MIN_CLASSIFY_DEPTH),
-    [positions, line, evalAt]
+    () => classifyLine(positions, line, statsEvalAt, MIN_CLASSIFY_DEPTH),
+    [classifyLine, positions, line, statsEvalAt]
   );
   const mainClassifications = useMemo(
-    () => (variation ? classifyGame(mainPositions, mainline, mainEvalAt, MIN_CLASSIFY_DEPTH) : classifications),
-    [variation, mainPositions, mainline, mainEvalAt, classifications]
+    () => (variation ? classifyMain(mainPositions, mainline, mainEvalAt, MIN_CLASSIFY_DEPTH) : classifications),
+    [classifyMain, variation, mainPositions, mainline, mainEvalAt, classifications]
   );
 
   const blackStarts = startFen.split(' ')[1] === 'b';
@@ -219,6 +248,58 @@ export function AnalysisScreen({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mainClassifications, mainPositions, headers, accuracy, mainWhiteWin]);
 
+  // Fatos para os professores (só a partida original): os lances mais marcantes, com o melhor lance do motor
+  const coachInput: CoachInput = useMemo(() => {
+    const weight: Partial<Record<MoveKind, number>> = { blunder: 50, miss: 40, mistake: 30, brilliant: 30, great: 20, inaccuracy: 10 };
+    const san = (fen: string, uci: string) => {
+      try {
+        return new Chess(fen).move({ from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci[4] ?? 'q' })?.san ?? uci;
+      } catch {
+        return uci;
+      }
+    };
+    const picked: { i: number; score: number; m: () => KeyMoment }[] = [];
+    mainClassifications.forEach((c, i) => {
+      const w = c ? weight[c.kind] : undefined;
+      const before = mainEvalAt(i);
+      const after = mainEvalAt(i + 1);
+      if (!c || !w || !before || !after) return;
+      const side = sideOf(i);
+      const fen = mainPositions[i];
+      const num = fen.split(' ')[5] ?? '1';
+      const ply = mainline[i];
+      // O lance do motor em SAN (chess.js) só é montado para os 7 momentos escolhidos
+      const best = () => (before.bestMove && before.bestMove !== ply.uci ? san(fen, before.bestMove) : null);
+      picked.push({
+        i,
+        score: w + (100 - c.accuracy) / 10,
+        m: () => ({
+          label: `${num}${side === 'w' ? '.' : '...'} ${ply.san}`,
+          side,
+          kind: c.kind,
+          best: ['brilliant', 'great'].includes(c.kind) ? null : best(),
+          before: evalText(before.cp, before.mate, side),
+          after: evalText(after.cp, after.mate, side),
+        }),
+      });
+    });
+    const moments = picked
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 7)
+      .sort((a, b) => a.i - b.i)
+      .map((p) => p.m());
+    return {
+      players: { w: report.players.w.name, b: report.players.b.name },
+      result: headers?.Result && headers.Result !== '*' ? headers.Result : undefined,
+      opening: report.openingName,
+      accuracy: report.accuracy,
+      rating: report.rating,
+      moments,
+      student: null,
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [report, mainClassifications, mainEvalAt, mainPositions, mainline, headers]);
+
   const atLineEnd = index === line.length;
   const displayEval: EvalData | null =
     atLineEnd && lineFinal
@@ -227,17 +308,100 @@ export function AnalysisScreen({
         ? live.data
         : evalAt(index);
 
-  const handleEvalUpdate = useCallback((data: EvalData, fen: string) => {
-    setLive({ fen, data });
-    if (data.depth >= STORE_LIVE_DEPTH) {
-      setEvals((prev) => ((prev[fen]?.depth ?? 0) > data.depth ? prev : { ...prev, [fen]: data }));
+  // O motor manda várias linhas por segundo; antes cada uma redesenhava a tela inteira e, a partir da
+  // profundidade 10, reclassificava a partida toda. Agora as linhas que chegam juntas viram uma atualização só.
+  const livePending = useRef<{ fen: string; data: EvalData } | null>(null);
+  const liveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const flushLive = useCallback(() => {
+    if (liveTimer.current) clearTimeout(liveTimer.current);
+    liveTimer.current = null;
+    const p = livePending.current;
+    livePending.current = null;
+    if (!p) return;
+    setLive(p);
+    if (p.data.depth >= STORE_LIVE_DEPTH) {
+      setEvals((prev) => ((prev[p.fen]?.depth ?? 0) > p.data.depth ? prev : { ...prev, [p.fen]: p.data }));
     }
   }, []);
+  const handleEvalUpdate = useCallback(
+    (data: EvalData, fen: string) => {
+      // Mudou de posição com uma atualização na fila: aplica a da posição antiga antes (não perde a avaliação)
+      if (livePending.current && livePending.current.fen !== fen) flushLive();
+      livePending.current = { fen, data };
+      if (!liveTimer.current) liveTimer.current = setTimeout(flushLive, LIVE_UI_INTERVAL_MS);
+    },
+    [flushLive]
+  );
+
+  // Resultados da revisão: juntados e aplicados de tempos em tempos
+  const reviewBatch = useRef<{
+    token: number;
+    evals: Record<string, EvalData>;
+    done: number;
+    timer: ReturnType<typeof setTimeout> | null;
+  }>({ token: 0, evals: {}, done: 0, timer: null });
+  const flushReview = useCallback(() => {
+    const b = reviewBatch.current;
+    if (b.timer) clearTimeout(b.timer);
+    b.timer = null;
+    const batch = b.evals;
+    const done = b.done;
+    b.evals = {};
+    const fens = Object.keys(batch);
+    if (fens.length > 0) {
+      setEvals((prev) => {
+        let next = prev;
+        for (const fen of fens) {
+          const data = batch[fen];
+          if ((next[fen]?.depth ?? 0) >= data.depth) continue;
+          if (next === prev) next = { ...prev };
+          next[fen] = data;
+        }
+        return next;
+      });
+    }
+    if (done > 0) setReview((r) => (r ? { ...r, done } : r));
+  }, []);
+
+  useEffect(
+    () => () => {
+      if (liveTimer.current) clearTimeout(liveTimer.current);
+      if (reviewBatch.current.timer) clearTimeout(reviewBatch.current.timer);
+    },
+    []
+  );
+
+  // ---------- Motor sob demanda ----------
+  // Antes o motor era carregado junto com a abertura do app (a tela de análise fica montada escondida):
+  // ler 1,8 MB de WASM, converter em base64 e injetar no WebView competia com a primeira tela.
+  const [engineMounted, setEngineMounted] = useState(visible);
+  useEffect(() => {
+    if (engineMounted) return;
+    if (visible) {
+      setEngineMounted(true);
+      return;
+    }
+    const timer = setTimeout(() => setEngineMounted(true), ENGINE_WARMUP_MS);
+    return () => clearTimeout(timer);
+  }, [visible, engineMounted]);
+  // Revisão pedida antes de o motor existir (ex.: partida aberta logo na abertura): roda quando ele montar
+  const pendingReview = useRef<(() => void) | null>(null);
 
   // ---------- Revisão (rápida / média / profunda) ----------
   const runReview = (mode: ReviewMode, fens: string[], known: Record<string, EvalData>) => {
     const engine = engineRef.current;
-    if (!engine) return;
+    if (!engine) {
+      pendingReview.current = () => runReview(mode, fens, known);
+      setEngineMounted(true);
+      return;
+    }
+    pendingReview.current = null;
+    const batch = reviewBatch.current;
+    if (batch.timer) clearTimeout(batch.timer);
+    batch.timer = null;
+    batch.evals = {};
+    batch.done = 0;
+    const token = ++batch.token;
     const preset = REVIEW_PRESETS[mode];
     const lastChess = new Chess(fens[fens.length - 1]);
     const todo = fens.filter(
@@ -260,15 +424,26 @@ export function AnalysisScreen({
     setReview({ mode, running: true, done: 0, total: todo.length });
     engine
       .analyzePositions(todo, { depth: preset.depth, movetimeMs: preset.movetimeMs }, (i, data) => {
+        const b = reviewBatch.current;
+        if (b.token !== token) return;
         const fen = todo[i];
-        setEvals((prev) => ((prev[fen]?.depth ?? 0) >= data.depth ? prev : { ...prev, [fen]: data }));
-        setReview((r) => (r ? { ...r, done: i + 1 } : r));
+        if ((b.evals[fen]?.depth ?? 0) < data.depth) b.evals[fen] = data;
+        b.done = i + 1;
+        if (!b.timer) b.timer = setTimeout(flushReview, REVIEW_FLUSH_MS);
       })
       .then((completed) => {
+        if (reviewBatch.current.token === token) flushReview();
         setReview((r) => (completed && r ? { ...r, running: false } : completed ? r : null));
         if (completed) finish();
       });
   };
+
+  useEffect(() => {
+    if (!engineMounted || !pendingReview.current) return;
+    const run = pendingReview.current;
+    pendingReview.current = null;
+    run();
+  }, [engineMounted]);
 
   const startReview = (mode: ReviewMode) => {
     setModeSheetOpen(false);
@@ -410,7 +585,10 @@ export function AnalysisScreen({
     setVariation(null);
   };
 
-  const goTo = (i: number) => setIndex(Math.max(0, Math.min(line.length, i)));
+  const lineLength = useRef(0);
+  lineLength.current = line.length;
+  const goTo = useCallback((i: number) => setIndex(Math.max(0, Math.min(lineLength.current, i))), []);
+  const sans = useMemo(() => line.map((p) => p.san), [line]);
 
   const copyPgn = async () => {
     try {
@@ -424,6 +602,7 @@ export function AnalysisScreen({
   // ---------- Textos derivados ----------
   const lastPly = index > 0 ? line[index - 1] : null;
   const lastCls: MoveClassification | null = index > 0 ? classifications[index - 1] : null;
+  const bookName = lastCls?.kind === 'book' ? openingNameAt(currentFen) : null;
 
   const sanOf = (fen: string, uci: string) => {
     try {
@@ -449,6 +628,56 @@ export function AnalysisScreen({
     const loss = before.mate === null && second.mate === null ? ((before.cp - second.cp) * mover) / 100 : null;
     return { san: sanOf(positions[index - 1], second.move), loss };
   }, [lastPly, lastCls, index, positions, evalAt]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ---------- Professor lance a lance ----------
+  const [aiCfg] = useAiConfig();
+  const coachExplanation = useMemo(() => {
+    if (!lastPly || !lastCls) return null;
+    const before = evalAt(index - 1);
+    const after = evalAt(index);
+    if (!before || !after) return null;
+    try {
+      const ex = explainMove({
+        fenBefore: positions[index - 1],
+        played: lastPly.uci,
+        kind: lastCls.kind,
+        before,
+        after,
+        secondSan: uniqueInfo?.san ?? null,
+      });
+      const color = positions[index - 1].split(' ')[1] as 'w' | 'b';
+      return {
+        ex,
+        bestLineSan: ex.bestSan && ex.bestLine.length ? lineSan(positions[index - 1], ex.bestLine, 6) : null,
+        replySan: ex.reply.length ? lineSan(positions[index], ex.reply, 5) : null,
+        evalAfter: after.result ? null : evalText(after.cp, after.mate, color),
+      };
+    } catch {
+      return null;
+    }
+  }, [lastPly, lastCls, index, positions, evalAt, uniqueInfo]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /** Mostra uma linha do motor no tabuleiro como variante, a partir da posição `from` da linha atual. */
+  const playLine = (from: number, ucis: string[]) => {
+    const c = new Chess(positions[from]);
+    const plies: Ply[] = [];
+    for (const u of ucis.slice(0, 8)) {
+      try {
+        const m = c.move({ from: u.slice(0, 2), to: u.slice(2, 4), promotion: (u[4] as any) ?? 'q' });
+        plies.push({ san: m.san, from: m.from, to: m.to, uci: m.from + m.to + (m.promotion ?? ''), after: c.fen() });
+      } catch {
+        break;
+      }
+    }
+    if (!plies.length) return;
+    if (variation && from >= variation.from) {
+      setVariation({ from: variation.from, plies: [...variation.plies.slice(0, from - variation.from), ...plies] });
+    } else {
+      setVariation({ from, plies });
+    }
+    setIndex(from + 1);
+    showToast('Linha do motor no tabuleiro · toque em VARIANTE para voltar');
+  };
 
   /** Setas no estilo do Lichess (largura 12 → 2 conforme a alternativa piora). */
   const arrows = useMemo<BoardArrow[]>(() => {
@@ -572,7 +801,9 @@ export function AnalysisScreen({
   // ---------- Layout ----------
   // Tabuleiro de ponta a ponta na largura da tela (múltiplo de 8 para as casas ficarem exatas);
   // em telas baixas ou largas ele encolhe para caber o resto.
-  const reserved = 296 + insets.top + insets.bottom;
+  // Com a partida revisada, o professor ganha um balão (o tabuleiro encolhe um pouco, sempre do mesmo tanto)
+  const coachMode = !!headers && !!lastReviewMode && !review?.running && mainline.length > 0;
+  const reserved = 296 + (coachMode ? 46 : 0) + (returnLabel ? 52 : 0) + insets.top + insets.bottom;
   const boardSize = Math.max(232, Math.floor(Math.min(width, height - reserved, 640) / 8) * 8);
   const panelWidth = Math.min(width, 640);
   const firstMoveNumber = useMemo(() => new Chess(startFen).moveNumber(), [startFen]);
@@ -590,20 +821,38 @@ export function AnalysisScreen({
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      <StockfishBridge
-        ref={engineRef}
-        fen={currentFen}
-        depth={LIVE_DEPTH}
-        liveEnabled={liveOn && visible}
-        onEvalUpdate={handleEvalUpdate}
-        onStatusChange={(status, detail) => {
-          setEngineStatus(status);
-          setEngineError(status === 'error' ? detail ?? 'Erro no motor' : null);
-        }}
-      />
+      {engineMounted && (
+        <StockfishBridge
+          ref={engineRef}
+          fen={currentFen}
+          depth={LIVE_DEPTH}
+          liveEnabled={liveOn && visible}
+          onEvalUpdate={handleEvalUpdate}
+          onStatusChange={(status, detail) => {
+            setEngineStatus(status);
+            setEngineError(status === 'error' ? detail ?? 'Erro no motor' : null);
+          }}
+        />
+      )}
 
       <View style={[styles.column, { width: panelWidth }]}>
         {/* Topo */}
+        {returnLabel && onReturn ? (
+          <Pressable
+            onPress={onReturn}
+            accessibilityRole="button"
+            accessibilityLabel={returnLabel}
+            style={({ pressed }) => [styles.returnBar, pressed && { opacity: 0.85 }]}
+          >
+            <Icon name="prev" size={18} color={colors.onRed} strokeWidth={2.6} />
+            <Text style={styles.returnText} numberOfLines={1}>
+              {returnLabel}
+            </Text>
+            <Text style={styles.returnHint} numberOfLines={1}>
+              Análise desta partida
+            </Text>
+          </Pressable>
+        ) : null}
         <View style={styles.topBar}>
           <IconButton name="home" label="Menu principal" onPress={onOpenMenu} />
           <View style={styles.titleWrap}>
@@ -649,6 +898,73 @@ export function AnalysisScreen({
         </View>
 
         <View style={styles.middle}>
+          {/* Balão do professor / feedback do lance: em cima do tabuleiro */}
+          <View style={[styles.feedback, coachMode && styles.feedbackCoach]}>
+            {engineError ? (
+              <Text style={styles.feedbackError} numberOfLines={2}>
+                Motor: {engineError}
+              </Text>
+            ) : review?.running ? (
+              <View style={{ flex: 1 }}>
+                <Text style={styles.feedbackMuted}>
+                  Análise {REVIEW_PRESETS[review.mode].label.toLowerCase()} · {review.done}/{review.total}
+                </Text>
+                <View style={styles.progressTrack}>
+                  <View
+                    style={[styles.progressFill, { width: `${Math.round((review.done / Math.max(1, review.total)) * 100)}%` }]}
+                  />
+                </View>
+              </View>
+            ) : lastPly && displayEval?.result && atLineEnd ? (
+              <Text style={styles.feedbackText}>
+                {lastPly.san} ·{' '}
+                <Text style={{ color: colors.brandText }}>
+                  {displayEval.result === '½-½' ? 'Empate' : `Xeque-mate · ${displayEval.result}`}
+                </Text>
+              </Text>
+            ) : coachMode && lastPly && lastCls && coachExplanation ? (
+              <CoachBubble
+                explanation={coachExplanation.ex}
+                kind={lastCls.kind}
+                bestLineSan={coachExplanation.bestLineSan}
+                replySan={coachExplanation.replySan}
+                evalAfter={coachExplanation.evalAfter}
+                onShowBest={() => playLine(index - 1, coachExplanation.ex.bestLine)}
+                onShowReply={() => playLine(index, coachExplanation.ex.reply)}
+              />
+            ) : coachMode && index === 0 ? (
+              <View style={styles.feedbackRow}>
+                <CoachAvatar coachId={aiCfg.coachId} size={46} />
+                <Text style={styles.feedbackText} numberOfLines={3}>
+                  Vamos rever a partida lance a lance. Avance com a seta: eu explico cada lance importante.
+                </Text>
+              </View>
+            ) : lastPly && lastCls ? (
+              <View style={styles.feedbackRow}>
+                <MoveBadge kind={lastCls.kind} size={24} />
+                <Text style={styles.feedbackText} numberOfLines={2}>
+                  {lastPly.san} <Text style={{ color: lastCls.color }}>{lastCls.label.toLowerCase()}</Text>
+                  {bookName ? (
+                    <Text style={styles.feedbackMuted}> · {bookName}</Text>
+                  ) : uniqueInfo ? (
+                    <Text style={styles.feedbackMuted}>
+                      {' '}· único lance; 2ª opção {uniqueInfo.san}
+                      {uniqueInfo.loss !== null ? ` (−${Math.max(0, uniqueInfo.loss).toFixed(1)})` : ' perdia o mate'}
+                    </Text>
+                  ) : bestSanBefore && !['best', 'great', 'brilliant', 'book'].includes(lastCls.kind) ? (
+                    <Text style={styles.feedbackMuted}> · melhor era {bestSanBefore}</Text>
+                  ) : null}
+                </Text>
+              </View>
+            ) : lastPly ? (
+              <Text style={styles.feedbackMuted}>
+                {liveOn ? `Analisando ${lastPly.san}…` : `${lastPly.san} · análise ao vivo desligada (lupa)`}
+              </Text>
+            ) : (
+              <Text style={styles.feedbackMuted}>Arraste uma peça ou importe uma partida</Text>
+            )}
+          </View>
+
           <PlayerBar {...topPlayer} showAccuracy={showAccuracy} fen={currentFen} pieceSet={prefs.pieceSet} />
 
           <View style={styles.boardBlock}>
@@ -686,58 +1002,9 @@ export function AnalysisScreen({
 
           <PlayerBar {...bottomPlayer} showAccuracy={showAccuracy} fen={currentFen} pieceSet={prefs.pieceSet} />
 
-          <View style={styles.feedback}>
-            {engineError ? (
-              <Text style={styles.feedbackError} numberOfLines={2}>
-                Motor: {engineError}
-              </Text>
-            ) : review?.running ? (
-              <View style={{ flex: 1 }}>
-                <Text style={styles.feedbackMuted}>
-                  Análise {REVIEW_PRESETS[review.mode].label.toLowerCase()} · {review.done}/{review.total}
-                </Text>
-                <View style={styles.progressTrack}>
-                  <View
-                    style={[styles.progressFill, { width: `${Math.round((review.done / Math.max(1, review.total)) * 100)}%` }]}
-                  />
-                </View>
-              </View>
-            ) : lastPly && displayEval?.result && atLineEnd ? (
-              <Text style={styles.feedbackText}>
-                {lastPly.san} ·{' '}
-                <Text style={{ color: colors.red }}>
-                  {displayEval.result === '½-½' ? 'Empate' : `Xeque-mate · ${displayEval.result}`}
-                </Text>
-              </Text>
-            ) : lastPly && lastCls ? (
-              <View style={styles.feedbackRow}>
-                <MoveBadge kind={lastCls.kind} size={24} />
-                <Text style={styles.feedbackText} numberOfLines={2}>
-                  {lastPly.san} <Text style={{ color: lastCls.color }}>{lastCls.label.toLowerCase()}</Text>
-                  {lastCls.kind === 'book' && openingNameAt(currentFen) ? (
-                    <Text style={styles.feedbackMuted}> · {openingNameAt(currentFen)}</Text>
-                  ) : uniqueInfo ? (
-                    <Text style={styles.feedbackMuted}>
-                      {' '}· único lance; 2ª opção {uniqueInfo.san}
-                      {uniqueInfo.loss !== null ? ` (−${Math.max(0, uniqueInfo.loss).toFixed(1)})` : ' perdia o mate'}
-                    </Text>
-                  ) : bestSanBefore && !['best', 'great', 'brilliant', 'book'].includes(lastCls.kind) ? (
-                    <Text style={styles.feedbackMuted}> · melhor era {bestSanBefore}</Text>
-                  ) : null}
-                </Text>
-              </View>
-            ) : lastPly ? (
-              <Text style={styles.feedbackMuted}>
-                {liveOn ? `Analisando ${lastPly.san}…` : `${lastPly.san} · análise ao vivo desligada (lupa)`}
-              </Text>
-            ) : (
-              <Text style={styles.feedbackMuted}>Arraste uma peça ou importe uma partida</Text>
-            )}
-          </View>
-
           <View style={styles.moves}>
             <MoveList
-              sans={line.map((p) => p.san)}
+              sans={sans}
               classifications={classifications}
               index={index}
               firstMoveNumber={firstMoveNumber}
@@ -788,6 +1055,8 @@ export function AnalysisScreen({
       <ReportSheet
         visible={reportOpen}
         report={report}
+        coachInput={coachInput}
+        defaultStudent={flipped ? 'b' : 'w'}
         onClose={() => setReportOpen(false)}
         onSelectKind={jumpToKind}
         onCopyPgn={copyPgn}
@@ -902,6 +1171,33 @@ const styles = themed(() => StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
   },
+  returnBar: {
+    marginHorizontal: 12,
+    marginTop: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 16,
+    backgroundColor: colors.red,
+    borderWidth: 2,
+    borderBottomWidth: 4,
+    borderColor: colors.redDark,
+  },
+  returnText: {
+    color: colors.onRed,
+    fontFamily: fonts.condensedHeavy,
+    fontSize: 15,
+  },
+  returnHint: {
+    flex: 1,
+    textAlign: 'right',
+    color: colors.onRed,
+    opacity: 0.85,
+    fontFamily: fonts.bold,
+    fontSize: 12,
+  },
   topBar: {
     marginHorizontal: 12,
     flexDirection: 'row',
@@ -916,7 +1212,6 @@ const styles = themed(() => StyleSheet.create({
   brand: {
     color: colors.text,
     fontFamily: fonts.condensedHeavy,
-    fontWeight: '900',
     fontSize: 17,
     letterSpacing: 1.2,
   },
@@ -926,14 +1221,13 @@ const styles = themed(() => StyleSheet.create({
     alignSelf: 'flex-start',
     gap: 5,
     backgroundColor: colors.mint,
-    borderRadius: 3,
+    borderRadius: 14,
     paddingHorizontal: 10,
     paddingVertical: 5,
   },
   variantText: {
     color: colors.bg,
     fontFamily: fonts.condensedHeavy,
-    fontWeight: '800',
     fontSize: 11,
     letterSpacing: 0.8,
   },
@@ -944,7 +1238,7 @@ const styles = themed(() => StyleSheet.create({
   engineDot: {
     width: 7,
     height: 7,
-    borderRadius: 4,
+    borderRadius: 12,
     marginRight: 4,
   },
   playerBar: {
@@ -957,7 +1251,7 @@ const styles = themed(() => StyleSheet.create({
   playerSwatch: {
     width: 14,
     height: 14,
-    borderRadius: 3,
+    borderRadius: 14,
   },
   swatchWhite: {
     backgroundColor: '#ece8e1',
@@ -971,11 +1265,11 @@ const styles = themed(() => StyleSheet.create({
     flex: 1,
     color: colors.text,
     fontSize: 14,
-    fontWeight: '600',
+    fontFamily: 'Nunito_600SemiBold',
   },
   playerElo: {
     color: colors.textMuted,
-    fontWeight: '400',
+    fontFamily: 'Nunito_600SemiBold',
   },
   accChip: {
     backgroundColor: colors.surfaceAlt,
@@ -986,7 +1280,6 @@ const styles = themed(() => StyleSheet.create({
   accText: {
     color: colors.mint,
     fontFamily: fonts.condensedHeavy,
-    fontWeight: '800',
     fontSize: 13,
   },
   boardBlock: {
@@ -996,7 +1289,10 @@ const styles = themed(() => StyleSheet.create({
     marginHorizontal: 12,
     height: 40,
     justifyContent: 'center',
-    marginTop: 4,
+    marginBottom: 6,
+  },
+  feedbackCoach: {
+    height: 86,
   },
   feedbackRow: {
     flexDirection: 'row',
@@ -1007,21 +1303,22 @@ const styles = themed(() => StyleSheet.create({
     flexShrink: 1,
     color: colors.text,
     fontSize: 14,
-    fontWeight: '600',
+    fontFamily: 'Nunito_600SemiBold',
   },
   feedbackError: {
-    color: colors.red,
+    fontFamily: 'Nunito_600SemiBold',
+    color: colors.danger,
     fontSize: 13,
   },
   feedbackMuted: {
     color: colors.textDim,
     fontSize: 13,
-    fontWeight: '400',
+    fontFamily: 'Nunito_600SemiBold',
   },
   progressTrack: {
     height: 3,
     backgroundColor: colors.surfaceAlt,
-    borderRadius: 2,
+    borderRadius: 8,
     marginTop: 6,
     overflow: 'hidden',
   },
@@ -1061,13 +1358,14 @@ const styles = themed(() => StyleSheet.create({
     position: 'absolute',
     alignSelf: 'center',
     backgroundColor: colors.surfaceAlt,
-    borderRadius: 3,
+    borderRadius: 14,
     paddingHorizontal: 16,
     paddingVertical: 9,
     borderWidth: 1,
     borderColor: colors.border,
   },
   toastText: {
+    fontFamily: 'Nunito_600SemiBold',
     color: colors.text,
     fontSize: 13,
   },

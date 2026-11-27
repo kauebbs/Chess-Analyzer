@@ -1,0 +1,65 @@
+import type { AiConfig } from './config';
+import type { ChatMsg, GenOptions } from './types';
+
+/** Normaliza "192.168.0.10" → "http://192.168.0.10:11434". */
+export function ollamaBase(url: string) {
+  let u = url.trim().replace(/\/+$/, '');
+  if (!u) return '';
+  if (!/^https?:\/\//i.test(u)) u = `http://${u}`;
+  if (!/:\d+$/.test(u.replace(/^https?:\/\//i, ''))) u = `${u}:11434`;
+  return u;
+}
+
+async function withTimeout<T>(ms: number, run: (signal: AbortSignal) => Promise<T>): Promise<T> {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), ms);
+  try {
+    return await run(ctrl.signal);
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+/** Gera uma resposta no Ollama do PC (API /api/chat, sem streaming). */
+export async function ollamaChat(cfg: AiConfig, messages: ChatMsg[], opts: GenOptions): Promise<string> {
+  const base = ollamaBase(cfg.ollamaUrl);
+  if (!base) throw new Error('Endereço do PC não configurado');
+  return withTimeout(opts.timeoutMs ?? 20000, async (signal) => {
+    const res = await fetch(`${base}/api/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      signal,
+      body: JSON.stringify({
+        model: cfg.ollamaModel,
+        messages,
+        stream: false,
+        keep_alive: '30m',
+        options: { num_predict: opts.maxTokens ?? 120, temperature: opts.temperature ?? 0.8 },
+      }),
+    });
+    if (!res.ok) {
+      const body = await res.text().catch(() => '');
+      throw new Error(`Ollama respondeu ${res.status}${body ? `: ${body.slice(0, 120)}` : ''}`);
+    }
+    const json = await res.json();
+    return String(json?.message?.content ?? '');
+  });
+}
+
+/** Testa a conexão e lista os modelos instalados no PC. */
+export async function ollamaTest(cfg: AiConfig): Promise<{ ok: true; models: string[] } | { ok: false; error: string }> {
+  const base = ollamaBase(cfg.ollamaUrl);
+  if (!base) return { ok: false, error: 'Digite o IP do PC (ex.: 192.168.0.10)' };
+  try {
+    const json = await withTimeout(5000, async (signal) => {
+      const res = await fetch(`${base}/api/tags`, { signal });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json();
+    });
+    const models: string[] = (json?.models ?? []).map((m: any) => String(m.name));
+    return { ok: true, models };
+  } catch (e: any) {
+    const msg = e?.name === 'AbortError' ? 'O PC não respondeu (tempo esgotado)' : String(e?.message ?? e);
+    return { ok: false, error: msg };
+  }
+}

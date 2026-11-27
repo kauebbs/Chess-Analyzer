@@ -1,4 +1,5 @@
-import { BOOK_POSITIONS, NAMED_POSITIONS, OPENING_NAMES } from './openingData';
+// openingData tem ~280 KB: só é carregado na primeira consulta (não na abertura do app)
+type OpeningData = typeof import('./openingData');
 
 let bookSet: Set<string> | null = null;
 let namedMap: Map<string, string> | null = null;
@@ -17,6 +18,8 @@ const epdKey = (fen: string) => fnv(fen.split(' ').slice(0, 4).join(' '));
 
 function init() {
   if (bookSet && namedMap) return;
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { BOOK_POSITIONS, NAMED_POSITIONS, OPENING_NAMES }: OpeningData = require('./openingData');
   bookSet = new Set(BOOK_POSITIONS.split(','));
   namedMap = new Map(
     NAMED_POSITIONS.split(',').map((entry) => {

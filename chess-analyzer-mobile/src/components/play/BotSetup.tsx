@@ -114,7 +114,7 @@ export function BotBotSetup({
           <Label>BOT 1 · COMEÇA DE BRANCAS</Label>
           <RatingPicker value={s.ratingA} onChange={(v) => set('ratingA', v)} compact />
         </Card>
-        <Text style={{ color: colors.red, textAlign: 'center', fontWeight: '900', fontSize: 16, letterSpacing: 2 }}>VS</Text>
+        <Text style={{ color: colors.brandText, textAlign: 'center', fontFamily: 'Nunito_900Black', fontSize: 16, letterSpacing: 2 }}>VS</Text>
         <Card>
           <Label>BOT 2</Label>
           <RatingPicker value={s.ratingB} onChange={(v) => set('ratingB', v)} compact />

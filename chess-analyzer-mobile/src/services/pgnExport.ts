@@ -19,7 +19,7 @@ export function buildPgn(
   const date = `${today.getFullYear()}.${String(today.getMonth() + 1).padStart(2, '0')}.${String(today.getDate()).padStart(2, '0')}`;
   const tags: Record<string, string> = headers
     ? { ...headers }
-    : { Event: 'Análise', Site: 'Chess Analyzer', Date: date, White: 'Brancas', Black: 'Pretas', Result: '*' };
+    : { Event: 'Análise', Site: 'Noxari Chess', Date: date, White: 'Brancas', Black: 'Pretas', Result: '*' };
   if (startFen !== START_FEN) {
     tags.SetUp = '1';
     tags.FEN = startFen;

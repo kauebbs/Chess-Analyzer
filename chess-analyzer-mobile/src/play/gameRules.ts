@@ -66,7 +66,7 @@ export function localPgn(
   const chess = replayUci(moves);
   const d = new Date();
   chess.setHeader('Event', info.event);
-  chess.setHeader('Site', 'Chess Analyzer');
+  chess.setHeader('Site', 'Noxari Chess');
   chess.setHeader('Date', `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`);
   chess.setHeader('White', info.white);
   chess.setHeader('Black', info.black);

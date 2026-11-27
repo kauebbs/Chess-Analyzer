@@ -90,7 +90,6 @@ const styles = themed(() => StyleSheet.create({
   score: {
     position: 'absolute',
     fontFamily: fonts.condensedHeavy,
-    fontWeight: '800',
     fontSize: 12,
     letterSpacing: 0.3,
   },

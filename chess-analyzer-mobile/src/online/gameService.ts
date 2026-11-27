@@ -1,5 +1,5 @@
 import { Chess } from 'chess.js';
-import { get, onDisconnect, onValue, ref, remove, runTransaction, set, update } from 'firebase/database';
+import { get, onDisconnect, onValue, ref, remove, runTransaction, set, update } from './firebaseDb'; // firebase/database sob demanda
 import { database, ensureSignedIn, serverNow } from './firebase';
 import { WEB_URL } from '../config/firebase';
 
@@ -410,7 +410,7 @@ export function onlinePgn(game: OnlineGame): string {
   const chess = replay(game.moves);
   const d = new Date(game.createdAt || Date.now());
   chess.setHeader('Event', 'Partida online');
-  chess.setHeader('Site', 'Chess Analyzer');
+  chess.setHeader('Site', 'Noxari Chess');
   chess.setHeader('Date', `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`);
   chess.setHeader('White', game.white?.name ?? 'Brancas');
   chess.setHeader('Black', game.black?.name ?? 'Pretas');

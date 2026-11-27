@@ -92,7 +92,7 @@ const styles = StyleSheet.create({
   },
   text: {
     color: '#fff',
-    fontWeight: '900',
+    fontFamily: 'Nunito_900Black',
     textAlign: 'center',
     includeFontPadding: false,
     letterSpacing: -0.5,

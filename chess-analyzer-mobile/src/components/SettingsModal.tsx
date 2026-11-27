@@ -17,6 +17,7 @@ import {
 import { playSound, SoundName, SoundPrefs, SoundVolume } from '../services/sounds';
 import { Icon } from './Icon';
 import { AboutSection } from './AboutSection';
+import { AiSection } from './AiSection';
 
 interface SettingsModalProps {
   visible: boolean;
@@ -39,7 +40,7 @@ interface SettingsModalProps {
   themePending: boolean;
 }
 
-type Tab = 'board' | 'animation' | 'sound' | 'about';
+type Tab = 'board' | 'animation' | 'sound' | 'ai' | 'about';
 
 // Prévia: 1.e4 d5 → 2.exd5 (mostra deslize, captura e o selo do lance)
 const PREVIEW_A = 'rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 2';
@@ -79,6 +80,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             ['board', 'TABULEIRO'],
             ['animation', 'ANIMAÇÕES'],
             ['sound', 'SONS'],
+            ['ai', 'IA'],
             ['about', 'SOBRE'],
           ] as [Tab, string][]
         ).map(([id, label]) => (
@@ -93,6 +95,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       <ScrollView showsVerticalScrollIndicator={false}>
         {tab === 'about' ? (
           <AboutSection />
+        ) : tab === 'ai' ? (
+          <AiSection />
         ) : tab === 'sound' ? (
           <>
             <ToggleRow
@@ -157,7 +161,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <Text style={styles.themeHint}>
               {themePending
                 ? 'O tema muda assim que a partida em andamento acabar.'
-                : 'Escuro é o negativo do cartaz: fundo quase preto e tinta creme. "Sistema" segue o celular.'}
+                : 'Escuro é a floresta à noite: verde profundo e texto creme. "Sistema" segue o celular.'}
             </Text>
             <ToggleRow
               title="Setas do motor"
@@ -410,6 +414,7 @@ function Segment<T extends string>({
 
 const styles = themed(() => StyleSheet.create({
   themeHint: {
+    fontFamily: 'Nunito_600SemiBold',
     color: colors.textMuted,
     fontSize: 12,
     fontStyle: 'italic',
@@ -419,15 +424,17 @@ const styles = themed(() => StyleSheet.create({
   tabs: {
     flexDirection: 'row',
     backgroundColor: colors.bg,
-    borderRadius: 4,
+    borderRadius: 12,
     padding: 3,
     marginBottom: 14,
   },
   tab: {
-    flex: 1,
+    flexGrow: 1,
+    flexShrink: 1,
     alignItems: 'center',
     paddingVertical: 8,
-    borderRadius: 4,
+    paddingHorizontal: 6,
+    borderRadius: 12,
   },
   tabActive: {
     backgroundColor: colors.surfaceAlt,
@@ -435,7 +442,6 @@ const styles = themed(() => StyleSheet.create({
   tabText: {
     color: colors.textDim,
     fontFamily: fonts.condensed,
-    fontWeight: '700',
     fontSize: 11,
     letterSpacing: 1,
   },
@@ -448,16 +454,17 @@ const styles = themed(() => StyleSheet.create({
     alignItems: 'center',
     gap: 12,
     backgroundColor: colors.bg,
-    borderRadius: 4,
+    borderRadius: 12,
     padding: 14,
     marginBottom: 8,
   },
   rowTitle: {
     color: colors.text,
     fontSize: 15,
-    fontWeight: '600',
+    fontFamily: 'Nunito_600SemiBold',
   },
   rowHint: {
+    fontFamily: 'Nunito_600SemiBold',
     color: colors.textMuted,
     fontSize: 12,
     marginTop: 2,
@@ -465,7 +472,6 @@ const styles = themed(() => StyleSheet.create({
   section: {
     color: colors.textDim,
     fontFamily: fonts.condensed,
-    fontWeight: '700',
     fontSize: 12,
     letterSpacing: 1.8,
     marginTop: 18,
@@ -474,14 +480,14 @@ const styles = themed(() => StyleSheet.create({
   label: {
     color: colors.text,
     fontSize: 13,
-    fontWeight: '600',
+    fontFamily: 'Nunito_600SemiBold',
     marginBottom: 6,
     marginTop: 4,
   },
   segment: {
     flexDirection: 'row',
     backgroundColor: colors.bg,
-    borderRadius: 4,
+    borderRadius: 12,
     padding: 3,
     marginBottom: 10,
   },
@@ -489,7 +495,7 @@ const styles = themed(() => StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     paddingVertical: 8,
-    borderRadius: 4,
+    borderRadius: 12,
   },
   segItemActive: {
     backgroundColor: colors.red,
@@ -497,11 +503,11 @@ const styles = themed(() => StyleSheet.create({
   segText: {
     color: colors.textDim,
     fontSize: 13,
-    fontWeight: '600',
+    fontFamily: 'Nunito_600SemiBold',
   },
   segTextActive: {
     color: '#fff',
-    fontWeight: '800',
+    fontFamily: 'Nunito_800ExtraBold',
   },
   grid: {
     flexDirection: 'row',
@@ -515,7 +521,7 @@ const styles = themed(() => StyleSheet.create({
   mini: {
     width: 52,
     height: 52,
-    borderRadius: 4,
+    borderRadius: 12,
     overflow: 'hidden',
     borderWidth: 2,
     borderColor: 'transparent',
@@ -531,16 +537,17 @@ const styles = themed(() => StyleSheet.create({
     borderColor: colors.mint,
   },
   optionLabel: {
+    fontFamily: 'Nunito_600SemiBold',
     color: colors.textDim,
     fontSize: 12,
   },
   optionLabelActive: {
     color: colors.text,
-    fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
   },
   piecePreview: {
     flexDirection: 'row',
-    borderRadius: 4,
+    borderRadius: 12,
     overflow: 'hidden',
     borderWidth: 2,
     borderColor: 'transparent',
@@ -552,6 +559,7 @@ const styles = themed(() => StyleSheet.create({
     justifyContent: 'center',
   },
   credit: {
+    fontFamily: 'Nunito_600SemiBold',
     color: colors.textMuted,
     fontSize: 11,
     marginTop: 18,
@@ -560,7 +568,7 @@ const styles = themed(() => StyleSheet.create({
   previewCard: {
     alignItems: 'center',
     backgroundColor: colors.bg,
-    borderRadius: 4,
+    borderRadius: 12,
     paddingVertical: 14,
     paddingHorizontal: 10,
   },
@@ -573,16 +581,17 @@ const styles = themed(() => StyleSheet.create({
   },
   previewBtn: {
     backgroundColor: colors.surfaceAlt,
-    borderRadius: 3,
+    borderRadius: 14,
     paddingHorizontal: 12,
     paddingVertical: 7,
   },
   previewBtnText: {
     color: colors.text,
     fontSize: 12,
-    fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
   },
   previewNote: {
+    fontFamily: 'Nunito_600SemiBold',
     color: colors.textMuted,
     fontSize: 11,
     marginTop: 8,
@@ -597,14 +606,14 @@ const styles = themed(() => StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     backgroundColor: colors.bg,
-    borderRadius: 3,
+    borderRadius: 14,
     paddingHorizontal: 12,
     paddingVertical: 8,
   },
   soundText: {
     color: colors.text,
     fontSize: 13,
-    fontWeight: '600',
+    fontFamily: 'Nunito_600SemiBold',
   },
   resetBtn: {
     alignSelf: 'center',
@@ -614,6 +623,7 @@ const styles = themed(() => StyleSheet.create({
     paddingVertical: 8,
   },
   resetText: {
+    fontFamily: 'Nunito_600SemiBold',
     color: colors.textDim,
     fontSize: 13,
     textDecorationLine: 'underline',

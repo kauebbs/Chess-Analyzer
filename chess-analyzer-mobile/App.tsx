@@ -14,6 +14,11 @@ import {
 } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
+import { useFonts } from 'expo-font';
+import { Nunito_600SemiBold } from '@expo-google-fonts/nunito/600SemiBold';
+import { Nunito_700Bold } from '@expo-google-fonts/nunito/700Bold';
+import { Nunito_800ExtraBold } from '@expo-google-fonts/nunito/800ExtraBold';
+import { Nunito_900Black } from '@expo-google-fonts/nunito/900Black';
 import { MainMenu, MenuAction } from './src/screens/MainMenu';
 import type { AnalysisSummary } from './src/screens/AnalysisScreen';
 import { AnalyzeHub } from './src/screens/AnalyzeHub';
@@ -42,6 +47,8 @@ type Screen = 'menu' | 'analyze' | 'analysis' | 'online' | 'play';
 const SWIPE_TABS: NavTab[] = ['home', 'play', 'analyze', 'tournament'];
 
 export default function App() {
+  // Tipografia Noxari (Nunito). Se a fonte falhar, o app segue com a fonte do sistema.
+  const [fontsLoaded, fontError] = useFonts({ Nunito_600SemiBold, Nunito_700Bold, Nunito_800ExtraBold, Nunito_900Black });
   const [screen, setScreen] = useState<Screen>('menu');
   const [intent, setIntent] = useState<{ action: MenuAction; nonce: number } | null>(null);
   const [summary, setSummary] = useState<AnalysisSummary | null>(null);
@@ -88,8 +95,11 @@ export default function App() {
         if (!raw) return;
         const saved = JSON.parse(raw);
         if (typeof saved.showArrows === 'boolean') setShowArrows(saved.showArrows);
-        if (typeof saved.themeIdx === 'number' && saved.themeIdx >= 0 && saved.themeIdx < BOARD_THEMES.length) {
-          setThemeIdx(saved.themeIdx);
+        if (typeof saved.themeIdx === 'number' && saved.themeIdx >= 0) {
+          // Rebrand Noxari: o tabuleiro "Noxari" entrou na posição 0. Quem estava no padrão antigo (Pôster)
+          // passa para o Noxari; os outros temas só andam uma casa.
+          const idx = saved.brand === 'noxari' ? saved.themeIdx : saved.themeIdx === 6 ? 0 : saved.themeIdx + 1;
+          if (idx < BOARD_THEMES.length) setThemeIdx(idx);
         }
         if (typeof saved.pieceSet === 'string') setPieceSet(saved.pieceSet);
         if (typeof saved.variantVeil === 'boolean') setVariantVeil(saved.variantVeil);
@@ -107,7 +117,7 @@ export default function App() {
   }, []);
   useEffect(() => {
     if (!prefsLoaded.current) return;
-    AsyncStorage.setItem(PREFS_KEY, JSON.stringify(prefs)).catch(() => {});
+    AsyncStorage.setItem(PREFS_KEY, JSON.stringify({ ...prefs, brand: 'noxari' })).catch(() => {});
   }, [prefs]);
 
   const openOnline = useCallback(() => {
@@ -153,9 +163,20 @@ export default function App() {
 
   const goMenu = useCallback(() => setScreen('menu'), []);
   const openSettings = useCallback(() => setSettingsOpen(true), []);
-  const analyzePgn = useCallback((pgn: string, orientation: 'white' | 'black') => {
+  // Análise aberta de dentro de um jogo/torneio: guarda para onde voltar
+  const screenRef = useRef<Screen>('menu');
+  screenRef.current = screen;
+  const [analysisReturn, setAnalysisReturn] = useState<{ screen: Screen; label: string } | null>(null);
+  const analyzePgn = useCallback((pgn: string, orientation: 'white' | 'black', backLabel?: string) => {
+    setAnalysisReturn(backLabel ? { screen: screenRef.current, label: backLabel } : null);
     setLoadRequest({ pgn, orientation, nonce: Date.now() });
     setScreen('analysis');
+  }, []);
+  const returnFromAnalysis = useCallback(() => {
+    setAnalysisReturn((r) => {
+      if (r) setScreen(r.screen);
+      return null;
+    });
   }, []);
   const backToTournament = useCallback((code: string) => openPlay('tournament', code), [openPlay]);
   const openOnlineGame = useCallback(
@@ -190,6 +211,7 @@ export default function App() {
       setScreen('analyze');
       return;
     }
+    setAnalysisReturn(null);
     setIntent({ action, nonce: Date.now() });
     setScreen('analysis');
   }, [openOnline, openPlay]);
@@ -328,6 +350,8 @@ export default function App() {
 
   if (!prefsReady) return <View style={{ flex: 1, backgroundColor: colors.bg }} />;
 
+  if (!fontsLoaded && !fontError) return <View style={{ flex: 1, backgroundColor: colors.bg }} />;
+
   return (
     <SafeAreaProvider key={themeKey}>
       <StatusBar style={appliedDark ? 'light' : 'dark'} />
@@ -346,6 +370,8 @@ export default function App() {
             onOpenMenu={goMenu}
             onOpenSettings={openSettings}
             onSummaryChange={onSummaryChange}
+            returnLabel={analysisReturn?.label ?? null}
+            onReturn={returnFromAnalysis}
           />
         </View>
         {onlineMounted && (
@@ -382,7 +408,7 @@ export default function App() {
         )}
         {screen === 'analyze' && (
           <View style={StyleSheet.absoluteFill}>
-            <AnalyzeHub onAction={onMenuAction} onOpenMenu={goMenu} current={summary} />
+            <AnalyzeHub onAction={onMenuAction} onOpenMenu={goMenu} current={summary} prefs={prefs} />
           </View>
         )}
       </Animated.View>

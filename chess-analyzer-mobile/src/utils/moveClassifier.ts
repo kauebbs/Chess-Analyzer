@@ -5,6 +5,8 @@ export interface PvLine {
   move: string; // primeiro lance da linha (UCI)
   cp: number; // perspectiva das Brancas
   mate: number | null;
+  /** A linha inteira do motor (UCI, até 10 lances), começando por `move`. Usada para explicar os lances. */
+  line?: string[];
 }
 
 export interface EvalData {

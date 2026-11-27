@@ -1,77 +1,36 @@
-# Identidade visual — Chess Analyzer
+# NOXARI CHESS — identidade visual
 
-![Prancha da marca](assets/brand/brand-sheet.png)
+**Conceito:** Playful Chess Identity. Divertida, amigável e inteligente; o xadrez continua confortável e sério.
 
-Estilo **cartaz editorial**: papel creme, tinta preta e vermelho de impressão; letreiro gigante,
-condensado e alto; detalhes pequenos de gráfica (marcas de registro "+", ficha técnica em vermelho,
-código de barras, letras das colunas do tabuleiro). Tudo é minimalista: linhas finas, nada de
-sombras ou bordas grossas. Os desenhos são originais do app.
-
-## Marca
-- **Símbolo:** cavalo em silhueta preta sobre um círculo vermelho, no papel creme (com "+" de
-  registro nos cantos quando há espaço).
-- **Letreiro:** "CHESS" em vermelho e "ANALYZER" em preto, fonte League Gothic (SIL OFL) convertida
-  em contornos — o app não precisa carregar a fonte.
-- **Cartaz do início:** "CHESS" gigante sangrando na borda e o cavalo na frente.
-
-Arquivos: `assets/brand/logo.svg`, `logo-mono.svg`, `wordmark.svg`, `hero.svg`, `brand-sheet.*`;
-no app, `src/brand/brandSvgs.ts` e `src/components/Logo.tsx` (`LogoMark`, `Wordmark`, `Lockup`, `Barcode`).
-Ícones: `assets/icon.png`, `assets/android-icon-*.png`, `assets/splash-icon.png`, `assets/favicon.png`.
+## Mascote
+- **Nox**, a capivara com capa verde-floresta, coroa e medalha de peão.
+- As poses ficam em `assets/mascote/` (hero, festa, pensa, rei, tonta, oculos, livro, icone) e são usadas só pelo
+  componente `Mascot` (`src/components/Mascot.tsx`). Não redesenhe a mascote em SVG/emoji: use as poses.
+- Professores: Lia = Nox lendo (amarelo), Otto = Nox de óculos (azul), Davi = Nox comemorando (verde).
 
 ## Cores (`src/theme.ts`)
-| Nome | Hex | Uso |
-|---|---|---|
-| Papel | `#ECE6DA` | Fundo de todas as telas |
-| Tinta | `#141414` | Texto, ícones, botões secundários, destaque (no código: `colors.mint`) |
-| Vermelho | `#D7261E` | Ação principal, títulos grandes, aba ativa, números |
-| Papel escuro | `#E2DBCC` / `#D7CFBE` | Cartões e áreas de apoio |
-
-Tabuleiro padrão de quem instala agora: tema **Pôster** (papel e cinza quente).
-
-## Tema escuro
-
-O escuro é o **negativo do cartaz**, não um app "dark mode" genérico: fundo quase preto puxado para o marrom
-(`#151413`, nunca preto puro), tinta creme (`#ece6da`) e o mesmo vermelho, um pouco mais vivo (`#e2392e`).
-
 | Papel | Claro | Escuro |
 |---|---|---|
-| `bg` (papel) | `#ece6da` | `#151413` |
-| `surface` / `surfaceAlt` | `#e2dbcc` / `#d7cfbe` | `#1e1c1a` / `#292623` |
-| `border` (linha fina) | `#c4baa7` | `#3b3732` |
-| `ink` = `text` = `mint` (traço forte) | `#141414` | `#ece6da` |
-| `paper` (contraste do traço) | `#ece6da` | `#151413` |
-| `red` | `#d7261e` | `#e2392e` |
-| `onRed` (texto sobre vermelho) | `#f6f1e7` | `#f6f1e7` |
+| Fundo | Creme #FFF5DF | Floresta #16211B |
+| Ação (token `red`) | Verde #58CC65, borda 3D #3E9E4C | Verde #58CC65, borda #2F7F3C |
+| Verde como texto (`brandText`) | #287D42 | #7FDC8A |
+| Texto | Grafite #303A35 | Creme #FFF5DF |
+| Apoio | Amarelo #FFC83D, Azul #42B9E8, Laranja #FF994D, Marrom #A96943 | iguais |
+| Erro (`danger`) | #E0453A | #FF6B5E |
 
-Regras: texto sobre vermelho usa `onRed`; sobre `ink`/`mint` usa `paper`/`bg`. Peças, avatares das peças e as
-caixas branca/preta do relatório usam as cores reais das peças nos dois temas. Os SVGs da marca são desenhados no
-claro e convertidos com `themeSvg()`.
-
-Como funciona: os estilos leem as cores por getters (`get color() { return colors.text; }`); trocar o tema chama
-`applyPalette()` e remonta as telas. Nunca no meio de uma partida (a troca espera ela acabar); a análise aberta
-é reaberta sozinha.
-
-## Princípios (referências: The Verge, Claude, Nike, Linear — awesome-design-md)
-
-- **Grito e sussurro.** Condensado enorme só em títulos de destaque; rótulos pequenos em CAIXA ALTA com
-  espaçamento largo (1,5–2,6 px). Nada de condensado gigante em botão.
-- **Profundidade plana.** Linhas finas (1–1,5 px) no lugar de sombras; a cor é que dá destaque.
-- **Cantos.** 4 para cartões, campos e botões; 3 para pílulas; 6 só em balões de chat; círculos só quando o
-  objeto é redondo (disco da marca, botões de ícone, xeque).
-- **Pouca cor.** Papel, tinta e vermelho. O verde/azul/laranja ficam só para a classificação dos lances.
-
-## Componentes (`src/components/poster.tsx`)
-- `PosterRow` — item de menu: número vermelho, título condensado, seta, linha fina embaixo.
-- `SectionLabel` — "01 JOGAR" com linha preta.
-- `PosterHeading` — título grande vermelho, condensado, em caixa alta.
-- `PosterButton` — retângulo chapado (tinta ou vermelho) ou só com contorno fino; cantos quase retos.
-- `MetaRow` — ficha técnica "TÍTULO — valor" em vermelho com itálico.
-- `Cross` — marca de registro "+".
+Verde é a cor de reconhecimento. Amarelo/azul/laranja só para diferenciar itens (selos dos menus), nunca para
+decorar. Nada de gradientes.
 
 ## Tipografia
-- Letreiro e cartazes: League Gothic (em contornos SVG).
-- Títulos no app: condensada pesada do sistema, CAIXA ALTA.
-- Valores da ficha técnica e textos de apoio: itálico.
+Nunito (Google Fonts, OFL), uma família só: 900 títulos, 800 rótulos, 700 destaques, 600 texto.
+Títulos de tela em frase ("Bora jogar?"), rótulos pequenos em caixa alta espaçada.
 
-## Tom de voz
-Direto, em português, sem enfeite.
+## Forma
+- Cantos: botões 16, cards 18–20, chips 14.
+- **Volume com intenção:** botões e itens tocáveis têm borda inferior mais grossa (4–5 px) da cor mais escura;
+  ao tocar, afundam. Cards estáticos têm borda fina.
+- Telas-menu abrem com `MascotHero` (título + Nox sobre um "morro" de cor). Cada tela usa uma pose, um lado e
+  uma cor diferentes.
+
+## Tabuleiro
+Tema "Noxari": casas creme #F4EFD9 e verde-sálvia #9DBF83, último lance em amarelo, melhor lance em verde.

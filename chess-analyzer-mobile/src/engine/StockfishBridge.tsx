@@ -248,7 +248,13 @@ export const StockfishBridge = forwardRef<StockfishHandle, StockfishBridgeProps>
         cp = parseInt(cpMatch[1], 10) * turnMultiplier;
       }
 
-      const pvLine = { move: moveUci, cp, mate };
+      const fullPv = line.match(/ pv ((?:[a-h][1-8][a-h][1-8][qrbn]? ?)+)/);
+      const pvLine = {
+        move: moveUci,
+        cp,
+        mate,
+        line: fullPv ? fullPv[1].trim().split(' ').slice(0, 10) : [moveUci],
+      };
       if (pvIndex === 1) {
         // Nova profundidade: as outras linhas da profundidade anterior deixam de valer
         const newDepth = parsedDepth > ctx.latest.depth;

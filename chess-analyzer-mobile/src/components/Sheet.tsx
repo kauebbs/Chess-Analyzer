@@ -58,7 +58,7 @@ const styles = themed(() => StyleSheet.create({
     alignSelf: 'center',
     width: 36,
     height: 4,
-    borderRadius: 2,
+    borderRadius: 8,
     backgroundColor: colors.border,
     marginBottom: 10,
   },
@@ -71,7 +71,6 @@ const styles = themed(() => StyleSheet.create({
   title: {
     color: colors.text,
     fontFamily: fonts.condensedHeavy,
-    fontWeight: '800',
     fontSize: 18,
     letterSpacing: 1.2,
     textTransform: 'uppercase',

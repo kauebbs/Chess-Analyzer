@@ -11,7 +11,10 @@ import type { AnalysisPrefs } from '../../screens/AnalysisScreen';
 import type { BotEngine } from '../../bots/botEngine';
 import { botAcceptsDraw, botWantsDraw, drawishEndgame, ratingLabel } from '../../bots/botPlayer';
 import { playSound } from '../../services/sounds';
-import { botDrawLine, botEndLine, botGreeting, botReply } from '../../bots/botChat';
+import { botDrawLine } from '../../bots/botChat';
+import { botLine, botLineOffline, BotEvent } from '../../ai/botVoice';
+import { personalityFor } from '../../ai/personalities';
+import { speak, stopSpeaking } from '../../ai/voice';
 import { ChatLine, ChatSheet, UnreadDot } from './ChatSheet';
 import { celebrationAllowed } from '../../settings/animation';
 import { END_TEXT, localPgn, LocalEndReason, replayUci, ruleResult } from '../../play/gameRules';
@@ -40,11 +43,13 @@ export interface BotGameProps {
   speed?: WatchSpeed;
   title: string;
   onExit: () => void;
-  onAnalyze: (pgn: string, orientation: 'white' | 'black') => void;
+  onAnalyze: (pgn: string, orientation: 'white' | 'black', backLabel?: string) => void;
   /** Série terminada: começa outra igual. */
   onRestart?: () => void;
   /** Modo `single` (torneio): chamado quando o jogo acaba. */
   onSingleResult?: (result: GameResult, reason: LocalEndReason, pgn: string) => void;
+  /** Torneio em MD3/MD5: próximo jogo da mesma série (null quando a série já acabou). */
+  nextInSeries?: () => (() => void) | null;
 }
 
 type Status = 'playing' | 'over';
@@ -62,6 +67,7 @@ export function BotGame({
   onAnalyze,
   onRestart,
   onSingleResult,
+  nextInSeries,
 }: BotGameProps) {
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
@@ -110,6 +116,42 @@ export function BotGame({
     []
   );
   const botSides = sides.filter((x) => x.kind === 'bot');
+  const hasHuman = sides.some((x) => x.kind === 'human');
+  const chatRef = useRef<ChatLine[]>([]);
+  chatRef.current = chatLines;
+  const lastEvalRef = useRef<EvalData | null>(null);
+  /** Fala do bot com a IA local (ou frase pronta da personalidade). `delay` é o tempo mínimo até aparecer. */
+  const voice = useCallback(
+    (b: Side, ev: BotEvent, delay = 0) => {
+      const rating = b.rating ?? 1500;
+      // Bot x bot (assistindo): frases prontas, para não encher a IA de pedidos
+      if (!hasHuman) {
+        say(b, botLineOffline(b.name, rating, ev), delay);
+        return;
+      }
+      const startedAt = Date.now();
+      const opp = sides.find((x) => x.id !== b.id) ?? sides[0];
+      const le = lastEvalRef.current;
+      let standing: 'ganhando' | 'perdendo' | 'equilibrado' | undefined;
+      if (le) {
+        const botColor = matchRef.current.games[gameIdxRef.current]?.white === b.id ? 1 : -1;
+        const sc = le.mate !== null ? (le.mate * botColor > 0 ? 1000 : -1000) : le.cp * botColor;
+        standing = sc > 150 ? 'ganhando' : sc < -150 ? 'perdendo' : 'equilibrado';
+      }
+      botLine({ name: b.name, rating }, ev, {
+        opponent: opp.name,
+        recent: chatRef.current.map((l) => ({ mine: l.mine, text: l.text })),
+        plies: movesRef.current.length,
+        standing,
+      }).then((text) => {
+        const wait = Math.max(0, delay - (Date.now() - startedAt));
+        say(b, text, wait);
+        setTimeout(() => speak(text, personalityFor(b.name).id), wait);
+      });
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
   const unread = Math.max(0, chatLines.filter((l) => !l.mine).length - seen);
   useEffect(() => {
     if (chatOpen) setSeen(chatLines.filter((l) => !l.mine).length);
@@ -121,6 +163,10 @@ export function BotGame({
   }, []);
 
   const game = match.games[gameIdx];
+  const matchRef = useRef(match);
+  matchRef.current = match;
+  const gameIdxRef = useRef(gameIdx);
+  gameIdxRef.current = gameIdx;
   const sideById = (id: string) => (sides[0].id === id ? sides[0] : sides[1]);
   const white = sideById(game.white);
   const black = sideById(game.black);
@@ -158,7 +204,11 @@ export function BotGame({
     lastOfferPly.current = -99;
     lowTimeWarned.current = false;
     playSound('start');
-    botSides.forEach((b, i) => say(b, botGreeting(b.rating ?? 1500), 900 + i * 1200));
+    lastEvalRef.current = null;
+    prevBotScore.current = null;
+    lastComment.current = -99;
+    mateAnnounced.current = false;
+    botSides.forEach((b, i) => voice(b, { type: 'greet' }, 900 + i * 1200));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameKey]);
 
@@ -193,7 +243,7 @@ export function BotGame({
         if (sd.kind !== 'bot') return;
         const color = sd === white ? 'w' : 'b';
         const outcome = result === '1/2-1/2' ? 'draw' : (result === '1-0') === (color === 'w') ? 'win' : 'loss';
-        say(sd, botEndLine(outcome), 1800 + i * 900);
+        voice(sd, { type: 'end', outcome, reason: END_TEXT[reason] }, 1800 + i * 900);
       });
       const pgn = localPgn(finalMoves, { event: title, white: white.name, black: black.name, result, reason });
       if (mode === 'series') {
@@ -287,8 +337,14 @@ export function BotGame({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [now]);
 
+  useEffect(() => () => stopSpeaking(), []);
+
   // ---------- Vez do bot ----------
   const lostStreak = useRef({ w: 0, b: 0 });
+  /** Avaliação da última vez do bot (do ponto de vista dele), para perceber erros e golpes da pessoa. */
+  const prevBotScore = useRef<number | null>(null);
+  const lastComment = useRef(-99);
+  const mateAnnounced = useRef(false);
   useEffect(() => {
     lostStreak.current = { w: 0, b: 0 };
   }, [gameKey]);
@@ -311,6 +367,30 @@ export function BotGame({
           setLastEval(ev);
           finish(turn === 'w' ? '0-1' : '1-0', 'resign', movesRef.current);
           return;
+        }
+      }
+      // Comentário do bot sobre o lance da pessoa (erro grave, lance forte, mate à vista)
+      if (ev && human) {
+        lastEvalRef.current = ev;
+        const sign = turn === 'w' ? 1 : -1;
+        const score = ev.mate !== null ? (ev.mate * sign > 0 ? 1500 : -1500) : Math.max(-1500, Math.min(1500, ev.cp * sign));
+        const prev = prevBotScore.current;
+        prevBotScore.current = score;
+        const plies = movesRef.current.length;
+        if (prev !== null && plies - lastComment.current >= 6) {
+          const hist = replayUci(movesRef.current).history();
+          const san = hist[hist.length - 1] ?? '';
+          const swing = score - prev;
+          let cev: BotEvent | null = null;
+          if (ev.mate !== null && ev.mate * sign > 0 && !mateAnnounced.current) {
+            mateAnnounced.current = true;
+            cev = { type: 'mating' };
+          } else if (swing >= 250 && prev < 500 && Math.random() < 0.75) cev = { type: 'theyBlundered', san };
+          else if (swing <= -200 && prev > -500 && Math.random() < 0.6) cev = { type: 'theyPlayedWell', san };
+          if (cev) {
+            lastComment.current = plies;
+            voice(turnSide, cev, 900);
+          }
         }
       }
       // Empate: em posições empatadas (final de torres, bispos de cores opostas…) o bot propõe
@@ -395,7 +475,7 @@ export function BotGame({
     // As respostas saem em fila, na ordem das mensagens
     const at = Math.max(Date.now() + 800 + Math.random() * 700, botReplyAt.current + 700);
     botReplyAt.current = at;
-    say(bot, botReply(text, bot.rating ?? 1500), at - Date.now());
+    voice(bot, { type: 'reply', message: text }, at - Date.now());
   };
 
   const chatBtn = (
@@ -404,6 +484,9 @@ export function BotGame({
       <UnreadDot count={unread} />
     </View>
   );
+
+  // Torneio MD3/MD5: depois que o resultado entra no torneio, vê se a série continua
+  const seriesNext = status === 'over' && nextInSeries ? nextInSeries() : null;
 
   const nextGame = () => {
     const p = pendingGame(match);
@@ -443,7 +526,7 @@ export function BotGame({
     return (
       <PlayerRow
         name={s.name}
-        sub={s.kind === 'bot' ? `Bot · ${s.rating} · ${ratingLabel(s.rating ?? 1500)}` : 'você'}
+        sub={s.kind === 'bot' ? `Bot · ${s.rating} · ${human ? personalityFor(s.name).label : ratingLabel(s.rating ?? 1500)}` : 'você'}
         color={color}
         bot={s.kind === 'bot'}
         time={shownTimes ? shownTimes[color] : null}
@@ -593,9 +676,11 @@ export function BotGame({
               <ActionBtn
                 icon="review"
                 label="Analisar"
-                onPress={() => onAnalyze(pgnNow(), humanColor === 'b' ? 'black' : 'white')}
+                onPress={() => onAnalyze(pgnNow(), humanColor === 'b' ? 'black' : 'white', mode === 'single' ? 'Voltar ao torneio' : 'Voltar ao jogo')}
               />
-              {mode === 'series' && !match.done ? (
+              {mode === 'single' && seriesNext ? (
+                <ActionBtn icon="next" label="Próxima partida" highlight onPress={seriesNext} />
+              ) : mode === 'series' && !match.done ? (
                 <ActionBtn icon="next" label="Próxima partida" highlight onPress={nextGame} />
               ) : mode === 'series' && onRestart ? (
                 <ActionBtn icon="reset" label={series ? 'Nova série' : 'Revanche'} highlight onPress={onRestart} />
@@ -622,7 +707,7 @@ const styles = themed(() => ({
   seriesStrip: {
     marginHorizontal: 12,
     backgroundColor: colors.surface,
-    borderRadius: 4,
+    borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 8,
     gap: 6,
@@ -630,7 +715,6 @@ const styles = themed(() => ({
   seriesLabel: {
     color: colors.textMuted,
     fontFamily: fonts.condensed,
-    fontWeight: '800' as const,
     fontSize: 11,
     letterSpacing: 1.6,
     textAlign: 'center' as const,
@@ -644,12 +728,11 @@ const styles = themed(() => ({
     flex: 1,
     color: colors.text,
     fontSize: 13,
-    fontWeight: '700' as const,
+    fontFamily: 'Nunito_700Bold',
   },
   seriesScoreText: {
     color: colors.text,
     fontFamily: fonts.condensedHeavy,
-    fontWeight: '900' as const,
     fontSize: 18,
     minWidth: 54,
     textAlign: 'center' as const,
@@ -657,7 +740,7 @@ const styles = themed(() => ({
   resultBanner: {
     marginHorizontal: 12,
     marginTop: 4,
-    borderRadius: 4,
+    borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 9,
     backgroundColor: colors.surface,
@@ -665,7 +748,6 @@ const styles = themed(() => ({
   resultText: {
     color: colors.text,
     fontFamily: fonts.condensedHeavy,
-    fontWeight: '800' as const,
     fontSize: 13,
     letterSpacing: 1.2,
     textAlign: 'center' as const,
@@ -678,13 +760,13 @@ const styles = themed(() => ({
   },
   offerBtn: {
     backgroundColor: colors.surfaceAlt,
-    borderRadius: 4,
+    borderRadius: 12,
     paddingHorizontal: 10,
     paddingVertical: 7,
   },
   offerBtnText: {
     color: colors.text,
-    fontWeight: '800' as const,
+    fontFamily: 'Nunito_800ExtraBold',
     fontSize: 12,
     letterSpacing: 0.8,
   },

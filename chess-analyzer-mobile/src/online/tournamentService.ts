@@ -1,4 +1,4 @@
-import { get, onValue, ref, remove, runTransaction, set, update } from 'firebase/database';
+import { get, onValue, ref, remove, runTransaction, set, update } from './firebaseDb'; // firebase/database sob demanda
 import { database, ensureSignedIn, serverNow } from './firebase';
 import { WEB_URL } from '../config/firebase';
 import { cancelWaitingGame, createGame, joinGame, normalizeCode, TimeControl } from './gameService';

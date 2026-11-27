@@ -131,7 +131,7 @@ function MatchCard({
     return (
       <View style={styles.matchRow}>
         <Avatar name={p.name} color={white ? 'w' : 'b'} bot={p.kind === 'bot'} size={28} />
-        <Text style={[styles.matchName, won && { color: colors.mint }, isYou(p.id) && { fontWeight: '900' }]} numberOfLines={1}>
+        <Text style={[styles.matchName, won && { color: colors.mint }, isYou(p.id) && { fontFamily: 'Nunito_900Black',}]} numberOfLines={1}>
           {p.name}
           {p.kind === 'bot' ? <Text style={styles.rating}>  {p.rating}</Text> : isYou(p.id) ? <Text style={styles.rating}>  você</Text> : null}
         </Text>
@@ -209,7 +209,7 @@ function StandingsTable({ t, isYou }: { t: Tournament; isYou: (id: string) => bo
                 {v}
               </Text>
             ))}
-            <Text style={[styles.td, styles.pts, { fontWeight: '900' }]}>{fmt(r.points)}</Text>
+            <Text style={[styles.td, styles.pts, { fontFamily: 'Nunito_900Black',}]}>{fmt(r.points)}</Text>
           </View>
         );
       })}
@@ -232,7 +232,7 @@ function Bracket({ t, isYou }: { t: Tournament; isYou: (id: string) => boolean }
               return (
                 <View style={[styles.bSide, won && { backgroundColor: `${colors.mint}22` }]}>
                   <Text
-                    style={[styles.bName, won && { color: colors.mint }, isYou(id ?? '') && { fontWeight: '900' }]}
+                    style={[styles.bName, won && { color: colors.mint }, isYou(id ?? '') && { fontFamily: 'Nunito_900Black',}]}
                     numberOfLines={1}
                   >
                     {p ? p.name : 'folga'}
@@ -264,27 +264,25 @@ const styles = themed(() => ({
   tName: {
     color: colors.text,
     fontFamily: fonts.condensedHeavy,
-    fontWeight: '900' as const,
     fontSize: 24,
     letterSpacing: 1,
   },
   tMeta: {
     color: colors.textMuted,
     fontFamily: fonts.condensed,
-    fontWeight: '700' as const,
     fontSize: 11,
     letterSpacing: 1.4,
   },
   tRound: {
     color: colors.mint,
-    fontWeight: '700' as const,
+    fontFamily: 'Nunito_700Bold',
     fontSize: 13,
     marginTop: 4,
   },
   champion: {
     alignItems: 'center' as const,
     backgroundColor: colors.mint,
-    borderRadius: 4,
+    borderRadius: 12,
     paddingVertical: 18,
     paddingHorizontal: 16,
     gap: 2,
@@ -292,7 +290,6 @@ const styles = themed(() => ({
   champLabel: {
     color: colors.bg,
     fontFamily: fonts.condensed,
-    fontWeight: '900' as const,
     fontSize: 12,
     letterSpacing: 3,
     marginTop: 4,
@@ -300,10 +297,10 @@ const styles = themed(() => ({
   champName: {
     color: colors.bg,
     fontFamily: fonts.condensedHeavy,
-    fontWeight: '900' as const,
     fontSize: 26,
   },
   champSub: {
+    fontFamily: 'Nunito_600SemiBold',
     color: colors.bg,
     fontSize: 12,
     opacity: 0.8,
@@ -311,14 +308,14 @@ const styles = themed(() => ({
   tabs: {
     flexDirection: 'row' as const,
     backgroundColor: colors.surface,
-    borderRadius: 4,
+    borderRadius: 12,
     padding: 3,
   },
   tab: {
     flex: 1,
     alignItems: 'center' as const,
     paddingVertical: 8,
-    borderRadius: 4,
+    borderRadius: 12,
   },
   tabActive: {
     backgroundColor: colors.surfaceAlt,
@@ -326,7 +323,6 @@ const styles = themed(() => ({
   tabText: {
     color: colors.textDim,
     fontFamily: fonts.condensed,
-    fontWeight: '700' as const,
     fontSize: 12,
     letterSpacing: 1.6,
   },
@@ -336,7 +332,7 @@ const styles = themed(() => ({
   roundChip: {
     paddingHorizontal: 12,
     paddingVertical: 7,
-    borderRadius: 3,
+    borderRadius: 14,
     backgroundColor: colors.surface,
   },
   roundChipActive: {
@@ -345,7 +341,7 @@ const styles = themed(() => ({
   roundChipText: {
     color: colors.textDim,
     fontSize: 12,
-    fontWeight: '700' as const,
+    fontFamily: 'Nunito_700Bold',
   },
   roundChipTextActive: {
     color: '#fff',
@@ -359,17 +355,16 @@ const styles = themed(() => ({
     flex: 1,
     color: colors.text,
     fontSize: 14,
-    fontWeight: '700' as const,
+    fontFamily: 'Nunito_700Bold',
   },
   rating: {
     color: colors.textMuted,
     fontSize: 12,
-    fontWeight: '500' as const,
+    fontFamily: 'Nunito_600SemiBold',
   },
   matchScore: {
     color: colors.text,
     fontFamily: fonts.condensedHeavy,
-    fontWeight: '900' as const,
     fontSize: 18,
     minWidth: 26,
     textAlign: 'right' as const,
@@ -377,11 +372,11 @@ const styles = themed(() => ({
   bye: {
     color: colors.textMuted,
     fontFamily: fonts.condensed,
-    fontWeight: '800' as const,
     letterSpacing: 1.4,
     fontSize: 12,
   },
   matchStatus: {
+    fontFamily: 'Nunito_600SemiBold',
     color: colors.textDim,
     fontSize: 12,
   },
@@ -391,7 +386,7 @@ const styles = themed(() => ({
     justifyContent: 'center' as const,
     gap: 6,
     backgroundColor: colors.surfaceAlt,
-    borderRadius: 4,
+    borderRadius: 12,
     paddingVertical: 9,
     marginTop: 2,
   },
@@ -401,7 +396,6 @@ const styles = themed(() => ({
   matchBtnText: {
     color: colors.text,
     fontFamily: fonts.condensedHeavy,
-    fontWeight: '800' as const,
     fontSize: 13,
     letterSpacing: 1,
   },
@@ -410,7 +404,7 @@ const styles = themed(() => ({
     alignItems: 'center' as const,
     paddingVertical: 9,
     paddingHorizontal: 4,
-    borderRadius: 4,
+    borderRadius: 12,
   },
   trHead: {
     borderBottomWidth: 1,
@@ -420,11 +414,11 @@ const styles = themed(() => ({
   th: {
     color: colors.textMuted,
     fontFamily: fonts.condensed,
-    fontWeight: '800' as const,
     fontSize: 11,
     letterSpacing: 1.2,
   },
   td: {
+    fontFamily: 'Nunito_600SemiBold',
     color: colors.text,
     fontSize: 14,
   },
@@ -437,6 +431,7 @@ const styles = themed(() => ({
     textAlign: 'right' as const,
   },
   legend: {
+    fontFamily: 'Nunito_600SemiBold',
     color: colors.textMuted,
     fontSize: 11,
     marginTop: 8,
@@ -445,14 +440,13 @@ const styles = themed(() => ({
   bracketTitle: {
     color: colors.textDim,
     fontFamily: fonts.condensed,
-    fontWeight: '800' as const,
     fontSize: 11,
     letterSpacing: 1.6,
     textAlign: 'center' as const,
   },
   bMatch: {
     backgroundColor: colors.surface,
-    borderRadius: 4,
+    borderRadius: 12,
     overflow: 'hidden' as const,
   },
   bSide: {
@@ -466,12 +460,11 @@ const styles = themed(() => ({
     flex: 1,
     color: colors.text,
     fontSize: 13,
-    fontWeight: '600' as const,
+    fontFamily: 'Nunito_600SemiBold',
   },
   bScore: {
     color: colors.textDim,
     fontFamily: fonts.condensedHeavy,
-    fontWeight: '900' as const,
     fontSize: 14,
   },
 }));
