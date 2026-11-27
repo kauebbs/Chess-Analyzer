@@ -154,4 +154,4 @@ Desenvolvido por [kauebbs](https://github.com/kauebbs).
 
 ## Repositório
 
-[github.com/kauebbs/Chess-Analyzer](https://github.com/kauebbs/Chess-Analyzer)
+[[github.com/kauebbs/Chess-Analyzer](https://github.com/kauebbs/Chess-Analyzer)](https://github.com/kauebbs/Noxari-Chess)
